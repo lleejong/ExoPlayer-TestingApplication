@@ -553,10 +553,10 @@ public class MediaCodecVideoTrackRenderer extends MediaCodecTrackRenderer {
 
   private void maybeNotifyVideoSizeChanged() {
     if (eventHandler == null || eventListener == null
-
-        || (lastReportedWidth == currentWidth && lastReportedHeight == currentHeight
-        && lastReportedUnappliedRotationDegrees == currentUnappliedRotationDegrees
-        && lastReportedPixelWidthHeightRatio == currentPixelWidthHeightRatio)) {
+            ){
+        //|| (lastReportedWidth == currentWidth && lastReportedHeight == currentHeight
+        //&& lastReportedUnappliedRotationDegrees == currentUnappliedRotationDegrees
+        //&& lastReportedPixelWidthHeightRatio == currentPixelWidthHeightRatio)) {
       return;
     }
     // Make final copies to ensure the runnable reports the correct values.

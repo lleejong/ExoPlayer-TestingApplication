@@ -23,6 +23,7 @@ import com.google.android.exoplayer.MediaCodecUtil.DecoderQueryException;
 import com.google.android.exoplayer.MediaFormat;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
+import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.player.DashRendererBuilder;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.demo.player.DemoPlayer.RendererBuilder;
@@ -138,7 +139,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
   private AudioCapabilitiesReceiver audioCapabilitiesReceiver;
 
-  private ArrayList<String> logList;
+  private ArrayList<LogData> logList = null;
 
   // Activity lifecycle
 
@@ -197,7 +198,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     audioCapabilitiesReceiver = new AudioCapabilitiesReceiver(this, this);
     audioCapabilitiesReceiver.register();
 
-    logList = new ArrayList<String>();
+
   }
 
   @Override
@@ -213,10 +214,12 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     Intent intent = getIntent();
     contentUri = intent.getData();
     contentType = intent.getIntExtra(CONTENT_TYPE_EXTRA,
-        inferContentType(contentUri, intent.getStringExtra(CONTENT_EXT_EXTRA)));
+            inferContentType(contentUri, intent.getStringExtra(CONTENT_EXT_EXTRA)));
     contentId = intent.getStringExtra(CONTENT_ID_EXTRA);
     provider = intent.getStringExtra(PROVIDER_EXTRA);
     configureSubtitleView();
+
+
     if (player == null) {
       //if (!maybeRequestPermission()) {
         preparePlayer(true);
@@ -236,17 +239,17 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     }
     shutterView.setVisibility(View.VISIBLE);
     releasePlayer();
-    setResult(-1);
-    finish();
+    //setResult(-1);
+    //finish();
   }
 
   @Override
   public void onDestroy() {
     super.onDestroy();
     audioCapabilitiesReceiver.unregister();
-    setResult(-1);
+    //setResult(-1);
     releasePlayer();
-    finish();
+    //finish();
   }
 
   // OnClickListener methods
@@ -385,9 +388,12 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
         break;
       case ExoPlayer.STATE_ENDED:
         text += "ended";
+        Log.d("LLEEJ","END STATE");
         Intent intent = new Intent();
         intent.putExtra("log",logList);
         setResult(0, intent);
+        logList = null;
+        Log.d("LLEEJ","END STATE");
         finish();
         break;
       case ExoPlayer.STATE_IDLE:
@@ -455,8 +461,11 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     videoFrame.setAspectRatio(
             height == 0 ? 1 : (width * pixelWidthAspectRatio) / height);
 
-    Log.d("AA", getTimeString(time) + " , " + height);
-    logList.add(getTimeString(time) + "," + height);
+    if(logList == null)
+      logList = new ArrayList<LogData>();
+
+    logList.add(new LogData(getTimeString(time), height+""));
+
   }
 
   // User controls

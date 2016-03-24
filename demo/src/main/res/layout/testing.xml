@@ -26,6 +26,15 @@
             />
 
 
+    <EditText
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:hint="Enter the tag for file"
+        android:id="@+id/tagEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    
+    
     <Button
         android:id="@+id/startButton"
         android:layout_width="match_parent"

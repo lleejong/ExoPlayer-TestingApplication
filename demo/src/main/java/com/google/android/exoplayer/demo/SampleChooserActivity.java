@@ -15,6 +15,7 @@
  */
 package com.google.android.exoplayer.demo;
 
+import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.Samples.Sample;
 
 import android.app.Activity;
@@ -29,6 +30,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ExpandableListView;
 import android.widget.ExpandableListView.OnChildClickListener;
 import android.widget.NumberPicker;
@@ -54,10 +56,13 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   private TextView statusView;
   private Button startButton;
   private NumberPicker numberPicker;
+  private EditText tagEdit;
+
   private int confirmedCount = 0;
   private int remainedCount = 0;
+  private String tagText;
 
-  private ArrayList<ArrayList<String>> wholeLogList;
+  private ArrayList<ArrayList<LogData>> wholeLogList;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -76,7 +81,10 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     startButton = (Button) findViewById(R.id.startButton);
     startButton.setOnClickListener(this);
 
-    wholeLogList = new ArrayList<ArrayList<String>>();
+    wholeLogList = new ArrayList<ArrayList<LogData>>();
+
+
+    tagEdit = (EditText) findViewById(R.id.tagEdit);
 
 
     /*
@@ -147,28 +155,44 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     updateStatusView("Start write files...");
 
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-    String folderName = dateFormat.format(new Date()).toString();
+    String fileName = dateFormat.format(new Date()).toString();
+    if(!tagText.equals("")){
+      fileName += "_"+tagText;
+    }
+    fileName += ".csv";
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG");
+
     if(!baseDir.exists())
       baseDir.mkdirs();
     //File newFolder = new File(folderName);
     //File newFolder = new File(folderPath);
     try {
 
-      int count = 1;
-      File newFolder = new File(baseDir.getPath()+"/"+folderName);
-      newFolder.mkdirs();
-      for(ArrayList<String> logList : wholeLogList){
-        File newFile = new File(newFolder.getPath()+"/"+count+".csv");
-        newFile.createNewFile();
-        PrintWriter printWriter = new PrintWriter(newFile);
-        for(String str : logList){
-          printWriter.println(str);
-        }
-        printWriter.close();
-        count++;
+      File newFile = new File(baseDir.getPath()+"/"+fileName);
+      newFile.createNewFile();
+      PrintWriter printWriter = new PrintWriter(newFile);
 
+      ArrayList<LogData> timestampList = wholeLogList.get(0);
+      String timestampLine="";
+      for(LogData log : timestampList){
+        timestampLine += log.getTimestamp() + ",";
       }
+      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
+
+
+
+      printWriter.println(timestampLine);
+
+      for(ArrayList<LogData> logList : wholeLogList){
+        String line = "";
+        for(LogData log : logList){
+          line += log.getLog() + ",";
+        }
+        line = line.substring(0,line.length() - 1);
+
+        printWriter.println(line);
+      }
+      printWriter.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -179,11 +203,14 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
   }
 
-  private void handleAfterTesting(ArrayList<String> logList){
+  private void handleAfterTesting(ArrayList<LogData> logList){
     updateStatusView(confirmedCount - remainedCount + " testing is ended.");
     wholeLogList.add(logList);
-    if(remainedCount == 0)
+    if(remainedCount == 0) {
       writeLogToDevice();
+      confirmedCount = 0;
+      tagText = "";
+    }
     else
       executeTest();
   }
@@ -203,20 +230,17 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     Log.d("LLEEJ", "remainedCount : " + remainedCount);
     Log.d("LLEEJ", confirmedCount- remainedCount +" TEST doned");
     if(data == null){
-      remainedCount = -1;
+      remainedCount = 0;
       writeLogToDevice();
     }
     else {
-      ArrayList<String> logList = (ArrayList<String>) data.getSerializableExtra("log");
+      ArrayList<LogData> logList = (ArrayList<LogData>) data.getSerializableExtra("log");
       handleAfterTesting(logList);
     }
 
   }
 
   private void executeTest(){
-
-
-
     remainedCount--;
 
     Log.d("LLEEJ", "confirmendCount : " + confirmedCount);
@@ -232,6 +256,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
             .putExtra(PlayerActivity.PROVIDER_EXTRA, sample.provider);
 
     updateStatusView(confirmedCount - remainedCount + " testing is started.");
+    Log.d("LLEEJ",confirmedCount - remainedCount + " testing is started.");
     startActivityForResult(mpdIntent,0);
   }
 
@@ -243,6 +268,9 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     startButton.setEnabled(false);
     confirmedCount = numberPicker.getValue();
     remainedCount = confirmedCount;
+
+    tagText = tagEdit.getText().toString();
+
 
     Log.d("LLEEJ","Test " + confirmedCount);
     executeTest();
