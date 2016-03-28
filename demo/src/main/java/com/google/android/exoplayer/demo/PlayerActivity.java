@@ -51,6 +51,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -71,11 +72,16 @@ import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -140,6 +146,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   private AudioCapabilitiesReceiver audioCapabilitiesReceiver;
 
   private ArrayList<LogData> logList = null;
+  private int id;
 
   // Activity lifecycle
 
@@ -217,6 +224,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
             inferContentType(contentUri, intent.getStringExtra(CONTENT_EXT_EXTRA)));
     contentId = intent.getStringExtra(CONTENT_ID_EXTRA);
     provider = intent.getStringExtra(PROVIDER_EXTRA);
+    id = intent.getIntExtra("id", -1);
     configureSubtitleView();
 
 
@@ -226,6 +234,11 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       //}
     } else {
       player.setBackgrounded(false);
+    }
+
+    if(id == -1){
+      Log.d("LLEEJ", "id is negative. Error");
+      finish();
     }
   }
 
@@ -376,6 +389,46 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
   // DemoPlayer.Listener implementation
 
+  private void writeFileToDevice(){
+    //SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+    //String fileName = dateFormat.format(new Date()).toString();
+
+    //fileName += ".csv";
+    Log.d("LLEEJ","PlayerActivity::start write to File, id = " + id);
+    File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
+
+    if(!baseDir.exists())
+      baseDir.mkdirs();
+    try {
+
+      File newFile = new File(baseDir.getPath()+"/"+id+".csv");
+      newFile.createNewFile();
+      PrintWriter printWriter = new PrintWriter(newFile);
+
+      String timestampLine = "";
+      for(LogData log : logList){
+        timestampLine += log.getTimestamp() + ",";
+      }
+      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
+
+      printWriter.println(timestampLine);
+
+      String logLine = "";
+      for(LogData log : logList){
+        logLine += log.getLog() + ",";
+      }
+      logLine = logLine.substring(0, logLine.length() - 1);
+      printWriter.println(logLine);
+
+      printWriter.close();
+
+      Log.d("LLEEJ", "PlayerActivity::End write to File, id = " + id);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+
   @Override
   public void onStateChanged(boolean playWhenReady, int playbackState) {
     if (playbackState == ExoPlayer.STATE_ENDED) {
@@ -388,12 +441,14 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
         break;
       case ExoPlayer.STATE_ENDED:
         text += "ended";
-        Log.d("LLEEJ","END STATE");
+        Log.d("LLEEJ", "END STATE");
         Intent intent = new Intent();
-        intent.putExtra("log",logList);
+        intent.putExtra("success", true);
         setResult(0, intent);
+        writeFileToDevice();
         logList = null;
         Log.d("LLEEJ","END STATE");
+
         finish();
         break;
       case ExoPlayer.STATE_IDLE:

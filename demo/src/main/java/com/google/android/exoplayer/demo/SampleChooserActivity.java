@@ -36,8 +36,11 @@ import android.widget.ExpandableListView.OnChildClickListener;
 import android.widget.NumberPicker;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -62,7 +65,8 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   private int remainedCount = 0;
   private String tagText;
 
-  private ArrayList<ArrayList<LogData>> wholeLogList;
+
+
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -81,7 +85,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     startButton = (Button) findViewById(R.id.startButton);
     startButton.setOnClickListener(this);
 
-    wholeLogList = new ArrayList<ArrayList<LogData>>();
+
 
 
     tagEdit = (EditText) findViewById(R.id.tagEdit);
@@ -146,11 +150,44 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     statusView.append(str + "\n");
   }
 
-  private void writeLogToDevice(){
-    if(wholeLogList.size() == 0) {
-      startButton.setEnabled(true);
-      return;
+  private ArrayList<String> readLogToDevice(){
+    File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
+    File[] list = baseDir.listFiles();
+    ArrayList<File> actualFileList = new ArrayList<File>();
+    ArrayList<String> wholeLogList = new ArrayList<String>();
+
+    for(int i = 0; i < list.length; i++){
+      File file = list[i];
+      if(file.isFile() || file.getName().contains(".csv")){
+        actualFileList.add(file);
+      }
     }
+    try {
+      boolean isFirst = true;
+      for(File readFile : actualFileList){
+        BufferedReader reader = new BufferedReader(new FileReader(readFile));
+        String firstLine = reader.readLine();
+        if(isFirst) {
+          isFirst = false;
+          wholeLogList.add(firstLine);
+        }
+        String secondLine = reader.readLine();
+        wholeLogList.add(secondLine);
+      }
+
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return wholeLogList;
+  }
+  private void writeLogToDevice(){
+//    if(wholeLogList.size() == 0) {
+//      startButton.setEnabled(true);
+//      return;
+//    }
 
     updateStatusView("Start write files...");
 
@@ -172,24 +209,21 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       newFile.createNewFile();
       PrintWriter printWriter = new PrintWriter(newFile);
 
-      ArrayList<LogData> timestampList = wholeLogList.get(0);
-      String timestampLine="";
-      for(LogData log : timestampList){
-        timestampLine += log.getTimestamp() + ",";
-      }
-      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
+      ArrayList<String> wholeLogList = readLogToDevice();
+      //ArrayList<LogData> timestampList = wholeLogList.get(0);
+
+//      String timestampLine="";
+//      for(LogData log : timestampList){
+//        timestampLine += log.getTimestamp() + ",";
+//      }
+//      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
 
 
 
-      printWriter.println(timestampLine);
+      //printWriter.println(timestampLine);
 
-      for(ArrayList<LogData> logList : wholeLogList){
-        String line = "";
-        for(LogData log : logList){
-          line += log.getLog() + ",";
-        }
-        line = line.substring(0,line.length() - 1);
-
+      for(String line : wholeLogList){
+        //line = line.substring(0,line.length() - 1);
         printWriter.println(line);
       }
       printWriter.close();
@@ -197,15 +231,17 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       e.printStackTrace();
     }
 
+
+
     updateStatusView("End write files...");
     updateStatusView("Success Testing");
     startButton.setEnabled(true);
 
   }
 
-  private void handleAfterTesting(ArrayList<LogData> logList){
+  private void handleAfterTesting(ArrayList<LogData> logList) {
     updateStatusView(confirmedCount - remainedCount + " testing is ended.");
-    wholeLogList.add(logList);
+    //wholeLogList.add(logList);
     if(remainedCount == 0) {
       writeLogToDevice();
       confirmedCount = 0;
@@ -253,7 +289,8 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
             .setData(Uri.parse(sample.uri))
             .putExtra(PlayerActivity.CONTENT_ID_EXTRA, sample.contentId)
             .putExtra(PlayerActivity.CONTENT_TYPE_EXTRA, sample.type)
-            .putExtra(PlayerActivity.PROVIDER_EXTRA, sample.provider);
+            .putExtra(PlayerActivity.PROVIDER_EXTRA, sample.provider)
+            .putExtra("id", confirmedCount - remainedCount);
 
     updateStatusView(confirmedCount - remainedCount + " testing is started.");
     Log.d("LLEEJ",confirmedCount - remainedCount + " testing is started.");
