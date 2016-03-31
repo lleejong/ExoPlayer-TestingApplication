@@ -150,6 +150,17 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     statusView.append(str + "\n");
   }
 
+  private void deleteTempFiles(){
+    File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
+    File[] list = baseDir.listFiles();
+    if(list.length > 0) {
+      for (int i = 0; i < list.length; i++){
+        list[i].delete();
+      }
+    }
+
+  }
+
   private ArrayList<String> readLogToDevice(){
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
     File[] list = baseDir.listFiles();
@@ -173,7 +184,9 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
         }
         String secondLine = reader.readLine();
         wholeLogList.add(secondLine);
+        reader.close();
       }
+      deleteTempFiles();
 
     } catch (FileNotFoundException e) {
       e.printStackTrace();

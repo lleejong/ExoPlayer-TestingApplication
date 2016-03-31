@@ -57,8 +57,10 @@ public final class DefaultAllocator implements Allocator {
     this.individualAllocationSize = individualAllocationSize;
     this.availableCount = initialAllocationCount;
     this.availableAllocations = new Allocation[initialAllocationCount + AVAILABLE_EXTRA_CAPACITY];
+    //LLEEJ: new Allocation[0 + 100]
     if (initialAllocationCount > 0) {
       initialAllocationBlock = new byte[initialAllocationCount * individualAllocationSize];
+      //LLEEJ: initialAllocationCount = 0 / individualAllocationSize = 64*1024
       for (int i = 0; i < initialAllocationCount; i++) {
         int allocationOffset = i * individualAllocationSize;
         availableAllocations[i] = new Allocation(initialAllocationBlock, allocationOffset);

@@ -422,6 +422,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
       printWriter.close();
 
+
       Log.d("LLEEJ", "PlayerActivity::End write to File, id = " + id);
     } catch (IOException e) {
       e.printStackTrace();
