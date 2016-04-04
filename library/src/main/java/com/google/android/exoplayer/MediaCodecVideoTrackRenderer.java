@@ -28,6 +28,7 @@ import android.media.MediaCodec;
 import android.media.MediaCrypto;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 
@@ -360,6 +361,9 @@ public class MediaCodecVideoTrackRenderer extends MediaCodecTrackRenderer {
     boolean hasCrop = outputFormat.containsKey(KEY_CROP_RIGHT)
         && outputFormat.containsKey(KEY_CROP_LEFT) && outputFormat.containsKey(KEY_CROP_BOTTOM)
         && outputFormat.containsKey(KEY_CROP_TOP);
+
+    Log.d("LLEEJ", "hasCrop : " + hasCrop);
+
     currentWidth = hasCrop
         ? outputFormat.getInteger(KEY_CROP_RIGHT) - outputFormat.getInteger(KEY_CROP_LEFT) + 1
         : outputFormat.getInteger(android.media.MediaFormat.KEY_WIDTH);

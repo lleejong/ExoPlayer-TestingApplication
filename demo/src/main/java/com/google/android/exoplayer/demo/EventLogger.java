@@ -49,6 +49,9 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   private long[] loadStartTimeMs;
   private long[] availableRangeValuesUs;
 
+  private int droppedFrameCount = 0;
+  private int rebufferingCount = 0;
+
 
   public EventLogger() {
     loadStartTimeMs = new long[DemoPlayer.RENDERER_COUNT];
@@ -94,6 +97,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   @Override
   public void onDroppedFrames(int count, long elapsed) {
     Log.d(TAG, "droppedFrames [" + getSessionTimeString() + ", " + count + "]");
+    droppedFrameCount = count;
   }
 
   @Override
@@ -191,6 +195,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   private String getStateString(int state) {
     switch (state) {
       case ExoPlayer.STATE_BUFFERING:
+        rebufferingCount++;
         return "B";
       case ExoPlayer.STATE_ENDED:
         return "E";
@@ -213,4 +218,11 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     return TIME_FORMAT.format((timeMs) / 1000f);
   }
 
+  public int getDroppedFrameCount(){
+    return droppedFrameCount;
+  }
+
+  public int getRebufferingCount(){
+    return rebufferingCount;
+  }
 }

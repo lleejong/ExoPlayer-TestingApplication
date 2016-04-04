@@ -378,6 +378,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
 
   @Override
   public long getCurrentPosition() {
+    //Log.d("LLEEJ","getCurrentPosition : "+ player.getCurrentPosition()/1000f);
     return player.getCurrentPosition();
   }
 
@@ -418,7 +419,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
   public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
       float pixelWidthHeightRatio, long time) {
     for (Listener listener : listeners) {
-      listener.onVideoSizeChanged(width, height, unappliedRotationDegrees, pixelWidthHeightRatio,time);
+      listener.onVideoSizeChanged(width, height, unappliedRotationDegrees, pixelWidthHeightRatio, time);
     }
 
   }

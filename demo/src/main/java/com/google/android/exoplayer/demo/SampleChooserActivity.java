@@ -174,14 +174,10 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       }
     }
     try {
-      boolean isFirst = true;
       for(File readFile : actualFileList){
         BufferedReader reader = new BufferedReader(new FileReader(readFile));
         String firstLine = reader.readLine();
-        if(isFirst) {
-          isFirst = false;
-          wholeLogList.add(firstLine);
-        }
+        wholeLogList.add(firstLine);
         String secondLine = reader.readLine();
         wholeLogList.add(secondLine);
         reader.close();

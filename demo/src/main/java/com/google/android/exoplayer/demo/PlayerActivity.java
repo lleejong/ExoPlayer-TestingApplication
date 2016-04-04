@@ -148,6 +148,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   private ArrayList<LogData> logList = null;
   private int id;
 
+
+
   // Activity lifecycle
 
   @Override
@@ -204,8 +206,6 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
     audioCapabilitiesReceiver = new AudioCapabilitiesReceiver(this, this);
     audioCapabilitiesReceiver.register();
-
-
   }
 
   @Override
@@ -409,7 +409,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       for(LogData log : logList){
         timestampLine += log.getTimestamp() + ",";
       }
-      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
+      timestampLine += "DroppedFrame Count,Rebuffering Count";
+      //timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
 
       printWriter.println(timestampLine);
 
@@ -417,7 +418,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       for(LogData log : logList){
         logLine += log.getLog() + ",";
       }
-      logLine = logLine.substring(0, logLine.length() - 1);
+      logLine += eventLogger.getDroppedFrameCount() + ","+ eventLogger.getRebufferingCount();
+      //logLine = logLine.substring(0, logLine.length() - 1);
       printWriter.println(logLine);
 
       printWriter.close();
@@ -510,6 +512,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     return TIME_FORMAT.format((timeMs) / 1000f);
   }
 
+
+
   @Override
   public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
       float pixelWidthAspectRatio, long time) {
@@ -520,8 +524,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     if(logList == null)
       logList = new ArrayList<LogData>();
 
-    logList.add(new LogData(getTimeString(time), height+""));
-
+    logList.add(new LogData(getTimeString(player.getCurrentPosition()), height+""));
   }
 
   // User controls
