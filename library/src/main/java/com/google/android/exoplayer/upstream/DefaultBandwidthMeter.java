@@ -90,11 +90,12 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
     int elapsedMs = (int) (nowMs - startTimeMs);
     if (elapsedMs > 0) {
       float bitsPerSecond = (bytesAccumulator * 8000) / elapsedMs;
+      //LLEEJ: bitsPerSecond가 bytesAccumulator가 weight으로 작용됨.
       slidingPercentile.addSample((int) Math.sqrt(bytesAccumulator), bitsPerSecond);
       float bandwidthEstimateFloat = slidingPercentile.getPercentile(0.5f);
       bitrateEstimate = Float.isNaN(bandwidthEstimateFloat) ? NO_ESTIMATE
           : (long) bandwidthEstimateFloat;
-      notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate);
+      notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate , bitsPerSecond);
     }
     streamCount--;
     if (streamCount > 0) {
@@ -103,12 +104,12 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
     bytesAccumulator = 0;
   }
 
-  private void notifyBandwidthSample(final int elapsedMs, final long bytes, final long bitrate) {
+  private void notifyBandwidthSample(final int elapsedMs, final long bytes, final long bitrate, final float bitsPerSecond) {
     if (eventHandler != null && eventListener != null) {
       eventHandler.post(new Runnable()  {
         @Override
         public void run() {
-          eventListener.onBandwidthSample(elapsedMs, bytes, bitrate);
+          eventListener.onBandwidthSample(elapsedMs, bytes, bitrate,bitsPerSecond);
         }
       });
     }

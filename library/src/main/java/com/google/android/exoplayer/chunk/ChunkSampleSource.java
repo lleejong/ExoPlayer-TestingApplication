@@ -111,6 +111,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
   public ChunkSampleSource(ChunkSource chunkSource, LoadControl loadControl,
       int bufferSizeContribution, Handler eventHandler, EventListener eventListener,
       int eventSourceId) {
+    //LLEEJ : bufferSizeContribution -> VIDEO_BUFFER_SEGMENT * BUFFER_SEGMENT_SIZE // 200* 64*1024
     this(chunkSource, loadControl, bufferSizeContribution, eventHandler, eventListener,
         eventSourceId, DEFAULT_MIN_LOADABLE_RETRY_COUNT);
   }

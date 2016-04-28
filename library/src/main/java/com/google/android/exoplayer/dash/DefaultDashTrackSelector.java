@@ -68,6 +68,7 @@ public final class DefaultDashTrackSelector implements DashTrackSelector {
     this.filterProtectedHdContent = filterProtectedHdContent;
   }
 
+  //LLEEJ : Dash Track Selector , 콘텐츠 자체의 분석이 들어가게 되는 부분, DashChunkSource에 의해 호출
   @Override
   public void selectTracks(MediaPresentationDescription manifest, int periodIndex, Output output)
       throws IOException {

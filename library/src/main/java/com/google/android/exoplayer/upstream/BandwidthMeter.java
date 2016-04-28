@@ -34,7 +34,7 @@ public interface BandwidthMeter extends TransferListener {
      *     is available. Note that this estimate is typically derived from more information than
      *     {@code bytes} and {@code elapsedMs}.
      */
-    void onBandwidthSample(int elapsedMs, long bytes, long bitrate);
+    void onBandwidthSample(int elapsedMs, long bytes, long bitrate, float bitsPerSecond);
   }
 
   /**

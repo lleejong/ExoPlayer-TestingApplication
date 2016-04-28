@@ -20,6 +20,7 @@ import com.google.android.exoplayer.MediaCodecTrackRenderer.DecoderInitializatio
 import com.google.android.exoplayer.TimeRange;
 import com.google.android.exoplayer.audio.AudioTrack;
 import com.google.android.exoplayer.chunk.Format;
+import com.google.android.exoplayer.demo.Log.BandwidthLogData;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.util.VerboseLogUtil;
 
@@ -29,6 +30,7 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Locale;
 
 /**
@@ -51,6 +53,10 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   private int droppedFrameCount = 0;
   private int rebufferingCount = 0;
+  private ArrayList<BandwidthLogData> bandwidthLogDataList;
+
+
+
 
 
   public EventLogger() {
@@ -59,6 +65,8 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   public void startSession() {
     sessionStartTimeMs = SystemClock.elapsedRealtime();
+    if(Configure.BANDWIDTH_ESTIMATE_DEBUG)
+      bandwidthLogDataList = new ArrayList<BandwidthLogData>();
     Log.d(TAG, "start [0]");
   }
 
@@ -89,9 +97,11 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   // DemoPlayer.InfoListener
 
   @Override
-  public void onBandwidthSample(int elapsedMs, long bytes, long bitrateEstimate) {
+  public void onBandwidthSample(int elapsedMs, long bytes, long bitrateEstimate, float bitsPerSecond) {
+    if(Configure.BANDWIDTH_ESTIMATE_DEBUG)
+      bandwidthLogDataList.add(new BandwidthLogData(getSessionTimeString()+"", bytes+"", bitrateEstimate+"", bitsPerSecond+""));
     Log.d(TAG, "bandwidth [" + getSessionTimeString() + ", " + bytes + ", "
-        + getTimeString(elapsedMs) + ", " + bitrateEstimate + "]");
+        + getTimeString(elapsedMs) + ", " + bitrateEstimate + ", " + bitsPerSecond + "]");
   }
 
   @Override
@@ -224,5 +234,9 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   public int getRebufferingCount(){
     return rebufferingCount;
+  }
+
+  public ArrayList<BandwidthLogData> getBandwidthLogDataList(){
+    return bandwidthLogDataList;
   }
 }

@@ -28,12 +28,15 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ExpandableListView;
 import android.widget.ExpandableListView.OnChildClickListener;
 import android.widget.NumberPicker;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -56,6 +59,13 @@ import java.util.List;
  */
 public class SampleChooserActivity extends Activity implements View.OnClickListener{
 
+  public static final int MODE_DASH = 0;
+  public static final int MODE_DASH_FIXED = 1;
+  public static final int MODE_DASH_TEST1 = 2;
+  public static final int MODE_HLS = 3;
+  public static final int MODE_SS = 4;
+  public static final int MODE_BBA = 5;
+
   private TextView statusView;
   private Button startButton;
   private NumberPicker numberPicker;
@@ -63,7 +73,29 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
   private int confirmedCount = 0;
   private int remainedCount = 0;
+  private int selectedMode;
   private String tagText;
+  private Spinner s;
+
+  public static String getModeToString(int mode){
+    switch(mode){
+      case 0:
+        return "DASH";
+      case 1:
+        return "DASH_FIXED";
+      case 2:
+        return "DASH_TEST1";
+      case 3:
+        return "HLS";
+      case 4:
+        return "SS";
+      case 5:
+        return "BBA";
+
+      default:
+        return "";
+    }
+  }
 
 
 
@@ -89,6 +121,13 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
 
     tagEdit = (EditText) findViewById(R.id.tagEdit);
+
+    final String[] items = {"DASH", "DASH_FIXED" , "DASH_TEST1", "HLS", "SmoothStreaming", "BBA"};
+
+    ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.spinner,items);
+    s = (Spinner)findViewById(R.id.spinner);
+    s.setAdapter(adapter);
+
 
 
     /*
@@ -292,14 +331,35 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     Log.d("LLEEJ", "remainedCount : " + remainedCount);
     Log.d("LLEEJ", confirmedCount- remainedCount +" TEST start");
 
+    selectedMode = s.getSelectedItemPosition();
 
-    Sample sample = Samples.YOUTUBE_DASH_MP4[0];
+    Sample sample;
+    switch(selectedMode){
+      case SampleChooserActivity.MODE_DASH:
+      case SampleChooserActivity.MODE_DASH_TEST1:
+      case SampleChooserActivity.MODE_DASH_FIXED:
+      case SampleChooserActivity.MODE_BBA:
+        sample = Samples.YOUTUBE_DASH_MP4[0];
+        break;
+      case SampleChooserActivity.MODE_HLS:
+        sample = Samples.HLS[5];
+        break;
+      case SampleChooserActivity.MODE_SS:
+        sample = Samples.SMOOTHSTREAMING[0];
+        break;
+      default:
+        sample = null;
+        break;
+    }
     Intent mpdIntent = new Intent(this, PlayerActivity.class)
             .setData(Uri.parse(sample.uri))
             .putExtra(PlayerActivity.CONTENT_ID_EXTRA, sample.contentId)
             .putExtra(PlayerActivity.CONTENT_TYPE_EXTRA, sample.type)
             .putExtra(PlayerActivity.PROVIDER_EXTRA, sample.provider)
-            .putExtra("id", confirmedCount - remainedCount);
+            .putExtra("id", confirmedCount - remainedCount)
+            .putExtra("tag", tagText)
+            .putExtra("mode", selectedMode);
+
 
     updateStatusView(confirmedCount - remainedCount + " testing is started.");
     Log.d("LLEEJ",confirmedCount - remainedCount + " testing is started.");

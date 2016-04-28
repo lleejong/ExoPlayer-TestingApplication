@@ -23,12 +23,14 @@ import com.google.android.exoplayer.MediaCodecUtil.DecoderQueryException;
 import com.google.android.exoplayer.MediaFormat;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
+import com.google.android.exoplayer.demo.Log.BandwidthLogData;
 import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.player.DashRendererBuilder;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.demo.player.DemoPlayer.RendererBuilder;
 import com.google.android.exoplayer.demo.player.ExtractorRendererBuilder;
 import com.google.android.exoplayer.demo.player.HlsRendererBuilder;
+import com.google.android.exoplayer.demo.player.SessionTimer;
 import com.google.android.exoplayer.demo.player.SmoothStreamingRendererBuilder;
 import com.google.android.exoplayer.drm.UnsupportedDrmException;
 import com.google.android.exoplayer.metadata.id3.GeobFrame;
@@ -90,7 +92,7 @@ import java.util.Locale;
  */
 public class PlayerActivity extends Activity implements SurfaceHolder.Callback, OnClickListener,
     DemoPlayer.Listener, DemoPlayer.CaptionListener, DemoPlayer.Id3MetadataListener,
-    AudioCapabilitiesReceiver.Listener {
+    AudioCapabilitiesReceiver.Listener, SessionTimer.OnSessionTimeListener {
 
   // For use within demo app code.
   public static final String CONTENT_ID_EXTRA = "content_id";
@@ -103,6 +105,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   private static final String TAG = "PlayerActivity";
   private static final int MENU_GROUP_TRACKS = 1;
   private static final int ID_OFFSET = 2;
+
 
   private static final CookieManager defaultCookieManager;
   static {
@@ -142,11 +145,14 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   private int contentType;
   private String contentId;
   private String provider;
+  private int selectedMode;
 
   private AudioCapabilitiesReceiver audioCapabilitiesReceiver;
 
   private ArrayList<LogData> logList = null;
   private int id;
+  private String tag;
+  private SessionTimer sessionTimer;
 
 
 
@@ -208,6 +214,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     audioCapabilitiesReceiver.register();
   }
 
+
+
   @Override
   public void onNewIntent(Intent intent) {
     releasePlayer();
@@ -225,6 +233,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     contentId = intent.getStringExtra(CONTENT_ID_EXTRA);
     provider = intent.getStringExtra(PROVIDER_EXTRA);
     id = intent.getIntExtra("id", -1);
+    tag = intent.getStringExtra("tag");
+    selectedMode = intent.getIntExtra("mode", -1);
     configureSubtitleView();
 
 
@@ -272,6 +282,10 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     if (view == retryButton) {
       preparePlayer(true);
     }
+  }
+
+  public void onSessionTimeEnded(){
+    onEndState();
   }
 
   // AudioCapabilitiesReceiver.Listener methods
@@ -330,6 +344,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
   // Internal methods
 
+  /*
   private RendererBuilder getRendererBuilder() {
     String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
     switch (contentType) {
@@ -338,7 +353,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
             new SmoothStreamingTestMediaDrmCallback());
       case Util.TYPE_DASH:
         return new DashRendererBuilder(this, userAgent, contentUri.toString(),
-            new WidevineTestMediaDrmCallback(contentId, provider));
+            new WidevineTestMediaDrmCallback(contentId, provider), selectedMode);
       case Util.TYPE_HLS:
         return new HlsRendererBuilder(this, userAgent, contentUri.toString());
       case Util.TYPE_OTHER:
@@ -347,6 +362,30 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
         throw new IllegalStateException("Unsupported type: " + contentType);
     }
   }
+  */
+
+  private RendererBuilder getRendererBuilder(){
+    String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
+    switch(selectedMode){
+      case SampleChooserActivity.MODE_DASH:
+      case SampleChooserActivity.MODE_DASH_FIXED:
+      case SampleChooserActivity.MODE_DASH_TEST1:
+      case SampleChooserActivity.MODE_BBA:
+        return new DashRendererBuilder(this, userAgent, contentUri.toString(),
+                new WidevineTestMediaDrmCallback(contentId, provider), selectedMode);
+
+      case SampleChooserActivity.MODE_HLS:
+        return new HlsRendererBuilder(this, userAgent, contentUri.toString());
+
+      case SampleChooserActivity.MODE_SS:
+        return new SmoothStreamingRendererBuilder(this, userAgent, contentUri.toString(),
+                new SmoothStreamingTestMediaDrmCallback());
+
+      default:
+        throw new IllegalStateException("Unsupported type: " + contentType);
+    }
+  }
+
 
   private void preparePlayer(boolean playWhenReady) {
     if (player == null) {
@@ -373,6 +412,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     }
     player.setSurface(surfaceView.getHolder().getSurface());
     player.setPlayWhenReady(playWhenReady);
+    sessionTimer = new SessionTimer(player, this);
+    sessionTimer.start();
   }
 
   private void releasePlayer() {
@@ -384,6 +425,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       player = null;
       eventLogger.endSession();
       eventLogger = null;
+      sessionTimer.interrupt();
     }
   }
 
@@ -424,11 +466,44 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
       printWriter.close();
 
+      if(Configure.BANDWIDTH_ESTIMATE_DEBUG) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String fileName = dateFormat.format(new Date()).toString();
+        File bitrateDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/BANDWIDTH_DEBUG");
+        if(!bitrateDir.exists())
+          bitrateDir.mkdirs();
+        File newBitrateFile = new File(bitrateDir.getPath() + "/" + fileName +"_BANDWIDTH_"+ tag +"_" + SampleChooserActivity.getModeToString(selectedMode) + ".csv");
+        newBitrateFile.createNewFile();
+        PrintWriter bitrateWriter = new PrintWriter(newBitrateFile);
+        ArrayList<BandwidthLogData> bandwidthDataList = eventLogger.getBandwidthLogDataList();
+        Log.d("LLEEJ","BANDWIDTH : "+bandwidthDataList.size() +"");
+
+        String header = "MS,Byte,Bitrate,bps";
+        bitrateWriter.println(header);
+        for(BandwidthLogData data : bandwidthDataList){
+          String line = data.getElapsedMs() + "," + data.getByteAccumulates() + "," + data.getBitrateEstimated() + ","+data.getBitsPerSecond();
+          bitrateWriter.println(line);
+        }
+        bitrateWriter.close();
+
+      }
+
 
       Log.d("LLEEJ", "PlayerActivity::End write to File, id = " + id);
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public void onEndState(){
+    Log.d("LLEEJ", "END STATE");
+    Intent intent = new Intent();
+    intent.putExtra("success", true);
+    setResult(0, intent);
+    writeFileToDevice();
+    logList = null;
+    Log.d("LLEEJ","END STATE");
+    finish();
   }
 
 
@@ -444,15 +519,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
         break;
       case ExoPlayer.STATE_ENDED:
         text += "ended";
-        Log.d("LLEEJ", "END STATE");
-        Intent intent = new Intent();
-        intent.putExtra("success", true);
-        setResult(0, intent);
-        writeFileToDevice();
-        logList = null;
-        Log.d("LLEEJ","END STATE");
-
-        finish();
+        onEndState();
         break;
       case ExoPlayer.STATE_IDLE:
         text += "idle";
@@ -523,6 +590,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
     if(logList == null)
       logList = new ArrayList<LogData>();
+
 
     logList.add(new LogData(getTimeString(player.getCurrentPosition()), height+""));
   }
@@ -817,5 +885,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       return super.dispatchKeyEvent(event);
     }
   }
+
+
 
 }

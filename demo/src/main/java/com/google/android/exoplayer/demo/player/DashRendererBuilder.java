@@ -24,6 +24,7 @@ import com.google.android.exoplayer.TrackRenderer;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.chunk.ChunkSampleSource;
 import com.google.android.exoplayer.chunk.ChunkSource;
+import com.google.android.exoplayer.chunk.FormatEvaluator;
 import com.google.android.exoplayer.chunk.FormatEvaluator.AdaptiveEvaluator;
 import com.google.android.exoplayer.dash.DashChunkSource;
 import com.google.android.exoplayer.dash.DefaultDashTrackSelector;
@@ -34,6 +35,7 @@ import com.google.android.exoplayer.dash.mpd.Period;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElement;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElementResolver;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElementResolver.UtcTimingCallback;
+import com.google.android.exoplayer.demo.SampleChooserActivity;
 import com.google.android.exoplayer.demo.player.DemoPlayer.RendererBuilder;
 import com.google.android.exoplayer.drm.MediaDrmCallback;
 import com.google.android.exoplayer.drm.StreamingDrmSessionManager;
@@ -79,17 +81,20 @@ public class DashRendererBuilder implements RendererBuilder {
 
   private AsyncRendererBuilder currentAsyncBuilder;
 
+  private int selectedMode;
+
   public DashRendererBuilder(Context context, String userAgent, String url,
-      MediaDrmCallback drmCallback) {
+      MediaDrmCallback drmCallback, int selectedMode) {
     this.context = context;
     this.userAgent = userAgent;
     this.url = url;
     this.drmCallback = drmCallback;
+    this.selectedMode = selectedMode;
   }
 
   @Override
   public void buildRenderers(DemoPlayer player) {
-    currentAsyncBuilder = new AsyncRendererBuilder(context, userAgent, url, drmCallback, player);
+    currentAsyncBuilder = new AsyncRendererBuilder(context, userAgent, url, drmCallback, player, selectedMode);
     currentAsyncBuilder.init();
   }
 
@@ -114,15 +119,20 @@ public class DashRendererBuilder implements RendererBuilder {
     private boolean canceled;
     private MediaPresentationDescription manifest;
     private long elapsedRealtimeOffset;
+    private int selectedMode;
 
     public AsyncRendererBuilder(Context context, String userAgent, String url,
-        MediaDrmCallback drmCallback, DemoPlayer player) {
+        MediaDrmCallback drmCallback, DemoPlayer player, int selectedMode) {
       this.context = context;
       this.userAgent = userAgent;
       this.drmCallback = drmCallback;
       this.player = player;
+      this.selectedMode = selectedMode;
+
       MediaPresentationDescriptionParser parser = new MediaPresentationDescriptionParser();
+      //LLEEJ : DataSource
       manifestDataSource = new DefaultUriDataSource(context, userAgent);
+      //LLEEJ : ManifestFetcher가 DataSource를 총체적으로 관리
       manifestFetcher = new ManifestFetcher<>(url, manifestDataSource, parser);
     }
 
@@ -213,6 +223,8 @@ public class DashRendererBuilder implements RendererBuilder {
       }
 
       // Build the video renderer.
+      //LLEEJ : 수정 전
+      /*
       DataSource videoDataSource = new DefaultUriDataSource(context, bandwidthMeter, userAgent);
       ChunkSource videoChunkSource = new DashChunkSource(manifestFetcher,
           DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
@@ -224,6 +236,46 @@ public class DashRendererBuilder implements RendererBuilder {
       TrackRenderer videoRenderer = new MediaCodecVideoTrackRenderer(context, videoSampleSource,
           MediaCodecSelector.DEFAULT, MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT, 5000,
           drmSessionManager, true, mainHandler, player, 50);
+          */
+
+      DataSource videoDataSource = new DefaultUriDataSource(context, bandwidthMeter, userAgent);
+      ChunkSource videoChunkSource = null;
+      switch(selectedMode){
+        case SampleChooserActivity.MODE_DASH:
+          videoChunkSource = new DashChunkSource(manifestFetcher,
+                  DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
+                  videoDataSource, new AdaptiveEvaluator(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+          Log.d("LLEEJ", "DASHRenderer selected Mode DASH");
+          break;
+        case SampleChooserActivity.MODE_DASH_FIXED:
+          videoChunkSource = new DashChunkSource(manifestFetcher,
+                  DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
+                  videoDataSource, new FormatEvaluator.AdaptiveEvaluatorFixed(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+          Log.d("LLEEJ", "DASHRenderer selected Mode DASH Fixed");
+          break;
+        case SampleChooserActivity.MODE_DASH_TEST1:
+          videoChunkSource = new DashChunkSource(manifestFetcher,
+                  DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
+                  videoDataSource, new FormatEvaluator.AdaptiveEvaluatorTest(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+          break;
+        case SampleChooserActivity.MODE_BBA:
+          videoChunkSource = new DashChunkSource(manifestFetcher,
+                  DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
+                  videoDataSource, new FormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,136), LIVE_EDGE_LATENCY_MS,
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+          break;
+      }
+
+
+      ChunkSampleSource videoSampleSource = new ChunkSampleSource(videoChunkSource, loadControl,
+              VIDEO_BUFFER_SEGMENTS * BUFFER_SEGMENT_SIZE, mainHandler, player,
+              DemoPlayer.TYPE_VIDEO);
+      TrackRenderer videoRenderer = new MediaCodecVideoTrackRenderer(context, videoSampleSource,
+              MediaCodecSelector.DEFAULT, MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT, 5000,
+              drmSessionManager, true, mainHandler, player, 50);
 
       // Build the audio renderer.
       DataSource audioDataSource = new DefaultUriDataSource(context, bandwidthMeter, userAgent);

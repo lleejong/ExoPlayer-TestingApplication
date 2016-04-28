@@ -361,6 +361,8 @@ public class DashChunkSource implements ChunkSource, Output {
       return;
     }
 
+
+    //LLEEJ: Evaluation이 일어나는 지점.
     evaluation.queueSize = queue.size();
     if (evaluation.format == null || !lastChunkWasInitialization) {
       if (enabledTrack.isAdaptive()) {
@@ -465,6 +467,8 @@ public class DashChunkSource implements ChunkSource, Output {
       }
     }
 
+
+
     RepresentationHolder representationHolder =
         periodHolder.representationHolders.get(selectedFormat.id);
     Representation selectedRepresentation = representationHolder.representation;
@@ -552,6 +556,7 @@ public class DashChunkSource implements ChunkSource, Output {
 
   // DashTrackSelector.Output implementation.
 
+  //LLEEJ : 동영상 화질 variation 정보 입력
   @Override
   public void adaptiveTrack(MediaPresentationDescription manifest, int periodIndex,
       int adaptationSetIndex, int[] representationIndices) {
