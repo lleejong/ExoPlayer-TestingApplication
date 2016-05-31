@@ -35,6 +35,7 @@ import com.google.android.exoplayer.dash.mpd.Period;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElement;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElementResolver;
 import com.google.android.exoplayer.dash.mpd.UtcTimingElementResolver.UtcTimingCallback;
+import com.google.android.exoplayer.demo.LLEEJFormatEvaluator;
 import com.google.android.exoplayer.demo.SampleChooserActivity;
 import com.google.android.exoplayer.demo.player.DemoPlayer.RendererBuilder;
 import com.google.android.exoplayer.drm.MediaDrmCallback;
@@ -244,27 +245,27 @@ public class DashRendererBuilder implements RendererBuilder {
         case SampleChooserActivity.MODE_DASH:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
-                  videoDataSource, new AdaptiveEvaluator(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  videoDataSource, new LLEEJFormatEvaluator.AdaptiveEvaluator(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
                   elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
           Log.d("LLEEJ", "DASHRenderer selected Mode DASH");
           break;
         case SampleChooserActivity.MODE_DASH_FIXED:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
-                  videoDataSource, new FormatEvaluator.AdaptiveEvaluatorFixed(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  videoDataSource, new LLEEJFormatEvaluator.AdaptiveEvaluatorFixed(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
                   elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
           Log.d("LLEEJ", "DASHRenderer selected Mode DASH Fixed");
           break;
         case SampleChooserActivity.MODE_DASH_TEST1:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
-                  videoDataSource, new FormatEvaluator.AdaptiveEvaluatorTest(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
+                  videoDataSource, new LLEEJFormatEvaluator.AdaptiveEvaluatorTest(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
                   elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
           break;
         case SampleChooserActivity.MODE_BBA:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
-                  videoDataSource, new FormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,136), LIVE_EDGE_LATENCY_MS,
+                  videoDataSource, new LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,136 * 1000), LIVE_EDGE_LATENCY_MS,
                   elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
           break;
       }

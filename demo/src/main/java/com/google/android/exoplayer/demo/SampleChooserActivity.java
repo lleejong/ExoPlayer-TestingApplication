@@ -19,8 +19,14 @@ import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.Samples.Sample;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothA2dp;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -53,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * An activity for selecting from a number of samples.
@@ -76,6 +83,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   private int selectedMode;
   private String tagText;
   private Spinner s;
+
 
   public static String getModeToString(int mode){
     switch(mode){
@@ -127,6 +135,19 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.spinner,items);
     s = (Spinner)findViewById(R.id.spinner);
     s.setAdapter(adapter);
+
+
+    BluetoothAdapter mBTAdapter = BluetoothAdapter.getDefaultAdapter();
+
+
+    Set<BluetoothDevice> pairedDevices = mBTAdapter.getBondedDevices();
+    if(pairedDevices.size() > 0)
+      Configure.BT_ON = true;
+
+
+    Log.d("LLEEJ", Configure.BT_ON +"");
+
+
 
 
 
@@ -242,7 +263,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
     String fileName = dateFormat.format(new Date()).toString();
     if(!tagText.equals("")){
-      fileName += "_"+tagText;
+      fileName += "_"+tagText + " " + Configure.BT_COMPENSATION_PARAMETER;
     }
     fileName += ".csv";
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG");
@@ -289,6 +310,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
   private void handleAfterTesting(ArrayList<LogData> logList) {
     updateStatusView(confirmedCount - remainedCount + " testing is ended.");
+    Configure.BT_COMPENSATION_PARAMETER += 0.2;
     //wholeLogList.add(logList);
     if(remainedCount == 0) {
       writeLogToDevice();

@@ -54,6 +54,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -154,6 +155,10 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   private String tag;
   private SessionTimer sessionTimer;
 
+  private CompetingFlowClient cfClient;
+
+
+
 
 
   // Activity lifecycle
@@ -163,6 +168,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     super.onCreate(savedInstanceState);
 
     setContentView(R.layout.player_activity);
+
+
     View root = findViewById(R.id.root);
     root.setOnTouchListener(new OnTouchListener() {
       @Override
@@ -270,6 +277,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   public void onDestroy() {
     super.onDestroy();
     audioCapabilitiesReceiver.unregister();
+    if(Configure.COMPETING_FLOW_EXPERI)
+      cfClient.sendMessage(CompetingFlowClient.MSG_TYPE_IPERF_END);
     //setResult(-1);
     releasePlayer();
     //finish();
@@ -412,7 +421,17 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     }
     player.setSurface(surfaceView.getHolder().getSurface());
     player.setPlayWhenReady(playWhenReady);
-    sessionTimer = new SessionTimer(player, this);
+
+    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+    StrictMode.setThreadPolicy(policy);
+
+    if(Configure.COMPETING_FLOW_EXPERI) {
+      cfClient = new CompetingFlowClient();
+      sessionTimer = new SessionTimer(player, this,cfClient);
+    }
+    else {
+      sessionTimer = new SessionTimer(player, this, null);
+    }
     sessionTimer.start();
   }
 
