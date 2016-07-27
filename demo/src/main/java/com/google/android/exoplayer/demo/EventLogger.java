@@ -92,6 +92,8 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
       float pixelWidthHeightRatio, long time) {
     Log.d(TAG, "videoSizeChanged [" + width + ", " + height + ", " + unappliedRotationDegrees
         + ", " + pixelWidthHeightRatio + "]");
+    Log.d("BBA DEBUG", "videoSizeChanged [" + width + ", " + height + ", " + unappliedRotationDegrees
+            + ", " + pixelWidthHeightRatio + "]");
   }
 
   // DemoPlayer.InfoListener
@@ -101,7 +103,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     if(Configure.BANDWIDTH_ESTIMATE_DEBUG)
       bandwidthLogDataList.add(new BandwidthLogData(getSessionTimeString()+"", bytes+"", bitrateEstimate+"", bitsPerSecond+""));
     Log.d(TAG, "bandwidth [" + getSessionTimeString() + ", " + bytes + ", "
-        + getTimeString(elapsedMs) + ", " + bitrateEstimate + ", " + bitsPerSecond + "]");
+            + getTimeString(elapsedMs) + ", " + bitrateEstimate + ", " + bitsPerSecond + "]");
   }
 
   @Override
@@ -195,7 +197,22 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   public void onAvailableRangeChanged(int sourceId, TimeRange availableRange) {
     availableRangeValuesUs = availableRange.getCurrentBoundsUs(availableRangeValuesUs);
     Log.d(TAG, "availableRange [" + availableRange.isStatic() + ", " + availableRangeValuesUs[0]
-        + ", " + availableRangeValuesUs[1] + "]");
+            + ", " + availableRangeValuesUs[1] + "]");
+  }
+
+  @Override
+  public void onSwitchToSteadyState(long elapsedMs) {
+    Log.d("onSwitchToSteadyStateBBA","onSwitchToSteadyState : " + elapsedMs);
+  }
+
+  @Override
+  public void onAllChunksDownloaded(long totalBytes) {
+    Log.d("onAllChunksDownloaded","onAllChunksDownloaded : " + totalBytes);
+  }
+
+  @Override
+  public void onBufferLoadChanged(long bufferDurationMs) {
+    Log.d("onBufferLoadChanged","onBufferLoadChanged : " + bufferDurationMs);
   }
 
   private void printInternalError(String type, Exception e) {

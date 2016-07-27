@@ -22,6 +22,7 @@ import android.annotation.TargetApi;
 import android.media.MediaDrm.KeyRequest;
 import android.media.MediaDrm.ProvisionRequest;
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -39,6 +40,7 @@ public class WidevineTestMediaDrmCallback implements MediaDrmCallback {
 
   public WidevineTestMediaDrmCallback(String contentId, String provider) {
     String params = "?video_id=" + contentId + "&provider=" + provider;
+    Log.d("LLEEJ", params);
     defaultUri = WIDEVINE_GTS_DEFAULT_BASE_URI + params;
   }
 

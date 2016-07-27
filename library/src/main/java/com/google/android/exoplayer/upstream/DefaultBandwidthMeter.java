@@ -90,9 +90,9 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
     int elapsedMs = (int) (nowMs - startTimeMs);
     if (elapsedMs > 0) {
       float bitsPerSecond = (bytesAccumulator * 8000) / elapsedMs;
-      //LLEEJ: bitsPerSecond가 bytesAccumulator가 weight으로 작용됨.
       slidingPercentile.addSample((int) Math.sqrt(bytesAccumulator), bitsPerSecond);
       float bandwidthEstimateFloat = slidingPercentile.getPercentile(0.5f);
+      //if(Configure.BT_ON)
       bitrateEstimate = Float.isNaN(bandwidthEstimateFloat) ? NO_ESTIMATE
           : (long) bandwidthEstimateFloat;
       notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate , bitsPerSecond);

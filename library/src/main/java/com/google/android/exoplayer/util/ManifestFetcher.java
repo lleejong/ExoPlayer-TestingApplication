@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import java.io.IOException;
@@ -170,9 +171,12 @@ public class ManifestFetcher<T> implements Loader.Callback {
    * @param callback The callback to receive the result.
    */
   public void singleLoad(Looper callbackLooper, final ManifestCallback<T> callback) {
+    Log.d("LLEEJ", "ManifestFetcher A");
     SingleFetchHelper fetchHelper = new SingleFetchHelper(
         new UriLoadable<>(manifestUri, uriDataSource, parser), callbackLooper, callback);
+    Log.d("LLEEJ","ManifestFetcher B");
     fetchHelper.startLoading();
+    Log.d("LLEEJ","ManifestFetcher C");
   }
 
   /**

@@ -30,6 +30,7 @@ import com.google.android.exoplayer.audio.AudioTrack;
 import com.google.android.exoplayer.chunk.ChunkSampleSource;
 import com.google.android.exoplayer.chunk.Format;
 import com.google.android.exoplayer.dash.DashChunkSource;
+import com.google.android.exoplayer.demo.LLEEJFormatEvaluator;
 import com.google.android.exoplayer.drm.StreamingDrmSessionManager;
 import com.google.android.exoplayer.hls.HlsSampleSource;
 import com.google.android.exoplayer.metadata.MetadataTrackRenderer.MetadataRenderer;
@@ -61,7 +62,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     HlsSampleSource.EventListener, DefaultBandwidthMeter.EventListener,
     MediaCodecVideoTrackRenderer.EventListener, MediaCodecAudioTrackRenderer.EventListener,
     StreamingDrmSessionManager.EventListener, DashChunkSource.EventListener, TextRenderer,
-    MetadataRenderer<List<Id3Frame>>, DebugTextViewHelper.Provider {
+    MetadataRenderer<List<Id3Frame>>, DebugTextViewHelper.Provider, LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator.EventListener{
 
   /**
    * Builds renderers for the player.
@@ -93,6 +94,12 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
         float pixelWidthHeightRatio, long time);
   }
+
+
+//  public interface BitrateListener {
+//    void onByteDownloaded(long elapsedMs, long bytes);
+//  }
+
 
   /**
    * A listener for internal errors.
@@ -128,6 +135,10 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     void onDecoderInitialized(String decoderName, long elapsedRealtimeMs,
         long initializationDurationMs);
     void onAvailableRangeChanged(int sourceId, TimeRange availableRange);
+
+    void onSwitchToSteadyState(long elapsedMs);
+    void onAllChunksDownloaded(long totalBytes);
+    void onBufferLoadChanged(long bufferDurationMs);
   }
 
   /**
@@ -231,6 +242,34 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
   public void setSurface(Surface surface) {
     this.surface = surface;
     pushSurface(false);
+  }
+
+
+
+
+
+  @Override
+  public void onSwitchToSteadyState(long elapsedMs) {
+    if (infoListener != null) {
+      infoListener.onSwitchToSteadyState(elapsedMs);
+    }
+
+  }
+
+  @Override
+  public void onAllChunksDownloaded(long totalBytes) {
+    if (infoListener != null) {
+      infoListener.onAllChunksDownloaded(totalBytes);
+    }
+
+  }
+
+  @Override
+  public void onBufferLoadChanged(long bufferDurationMs) {
+    if (infoListener != null) {
+      infoListener.onAllChunksDownloaded(bufferDurationMs);
+    }
+
   }
 
   public Surface getSurface() {
@@ -598,5 +637,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
           videoRenderer, MediaCodecVideoTrackRenderer.MSG_SET_SURFACE, surface);
     }
   }
+
+
 
 }

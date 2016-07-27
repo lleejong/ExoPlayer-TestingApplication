@@ -18,6 +18,9 @@ public class LogData implements Serializable{
     public String getTimestamp(){
         return timestamp;
     }
+    public double getTimeToDouble(){
+        return Double.parseDouble(timestamp);
+    }
 
     public String getLog(){
         return log;

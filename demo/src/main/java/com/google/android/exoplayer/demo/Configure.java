@@ -9,6 +9,9 @@ public class Configure {
     public static final int T = 20;
     public static final boolean COMPETING_FLOW_EXPERI = false;
     public static boolean BT_ON = false;
-    public static double BT_COMPENSATION_PARAMETER = 2.7;
+    public static boolean BT_COMPENSATION_TEST = false;
+    public static double BT_COMPENSATION_PARAMETER = 1.0;
+
+    public static boolean LOGGING_SERVER = true;
 
 }

@@ -362,8 +362,6 @@ public class MediaCodecVideoTrackRenderer extends MediaCodecTrackRenderer {
         && outputFormat.containsKey(KEY_CROP_LEFT) && outputFormat.containsKey(KEY_CROP_BOTTOM)
         && outputFormat.containsKey(KEY_CROP_TOP);
 
-    Log.d("LLEEJ", "hasCrop : " + hasCrop);
-
     currentWidth = hasCrop
         ? outputFormat.getInteger(KEY_CROP_RIGHT) - outputFormat.getInteger(KEY_CROP_LEFT) + 1
         : outputFormat.getInteger(android.media.MediaFormat.KEY_WIDTH);

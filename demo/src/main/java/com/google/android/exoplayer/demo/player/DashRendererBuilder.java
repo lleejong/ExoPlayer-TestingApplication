@@ -24,8 +24,6 @@ import com.google.android.exoplayer.TrackRenderer;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.chunk.ChunkSampleSource;
 import com.google.android.exoplayer.chunk.ChunkSource;
-import com.google.android.exoplayer.chunk.FormatEvaluator;
-import com.google.android.exoplayer.chunk.FormatEvaluator.AdaptiveEvaluator;
 import com.google.android.exoplayer.dash.DashChunkSource;
 import com.google.android.exoplayer.dash.DefaultDashTrackSelector;
 import com.google.android.exoplayer.dash.mpd.AdaptationSet;
@@ -66,7 +64,8 @@ public class DashRendererBuilder implements RendererBuilder {
   private static final String TAG = "DashRendererBuilder";
 
   private static final int BUFFER_SEGMENT_SIZE = 64 * 1024;
-  private static final int VIDEO_BUFFER_SEGMENTS = 200;
+  //private static final int VIDEO_BUFFER_SEGMENTS = 200;
+  private static final int VIDEO_BUFFER_SEGMENTS = 1000;
   private static final int AUDIO_BUFFER_SEGMENTS = 54;
   private static final int TEXT_BUFFER_SEGMENTS = 2;
   private static final int LIVE_EDGE_LATENCY_MS = 30000;
@@ -265,7 +264,7 @@ public class DashRendererBuilder implements RendererBuilder {
         case SampleChooserActivity.MODE_BBA:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
-                  videoDataSource, new LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,136 * 1000), LIVE_EDGE_LATENCY_MS,
+                  videoDataSource, new LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,manifest.duration, mainHandler, player), LIVE_EDGE_LATENCY_MS,
                   elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
           break;
       }

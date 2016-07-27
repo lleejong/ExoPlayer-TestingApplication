@@ -30,6 +30,7 @@ import com.google.android.exoplayer.util.Assertions;
 
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -434,6 +435,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
       // Perform the evaluation.
       lastPerformedBufferOperation = now;
       doChunkOperation();
+      //Log.d("LLEEJ", "BB");
       boolean chunksDiscarded = discardUpstreamMediaChunks(currentLoadableHolder.queueSize);
       // Update the next load position as appropriate.
       if (currentLoadableHolder.chunk == null) {
@@ -448,6 +450,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
     // Update the control with our current state, and determine whether we're the next loader.
     boolean nextLoader = loadControl.update(this, downstreamPositionUs, nextLoadPositionUs,
         loadingOrBackedOff);
+    //Log.d("LLEEJ", "CC");
 
     if (isBackedOff) {
       long elapsedMillis = now - currentLoadableExceptionTimestamp;

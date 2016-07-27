@@ -8,7 +8,10 @@ import com.google.android.exoplayer.chunk.FormatEvaluator;
 import com.google.android.exoplayer.chunk.MediaChunk;
 import com.google.android.exoplayer.upstream.BandwidthMeter;
 
+import java.util.HashMap;
 import java.util.List;
+
+import android.os.Handler;
 
 /**
  * Created by lleej on 2016-05-20.
@@ -453,17 +456,17 @@ public class LLEEJFormatEvaluator {
 
     }
 
-    //LLEEJ : BBA
-
     public static class BufferBasedAdaptiveEvaluator implements FormatEvaluator {
 
         public static final int DEFAULT_BUFFER_DURATION_MS = 30000;
-        public static final int DEFAULT_RESERVOIR_DURATION_MS = 10000;
+        public static final int DEFAULT_RESERVOIR_DURATION_MS = 100000;
 
         public enum BufferState {
             STARTUP_STATE, STEADY_STATE
         }
 
+        private int bufferDurationMs;
+        private int reservoirDurationMs;
         private BufferState bufferState;
         private final BandwidthMeter bandwidthMeter;
 
@@ -474,13 +477,39 @@ public class LLEEJFormatEvaluator {
         //buffer occupancy starts decreasing, but it should not trigger f function to reduce
         // bandwidth
         private long videoDurationUs;
+        private long startTime;
+        private final Handler eventHandler;
+        private final EventListener eventListener;
+        private HashMap<Long, Long> chunksByte;
+        private boolean allChunksLoaded;
 
 
-        public BufferBasedAdaptiveEvaluator(BandwidthMeter bandwidthMeter, long videoDurationMs) {
-            this.bufferState = BufferState.STARTUP_STATE;
-            this.bandwidthMeter = bandwidthMeter;
-            this.prevBufferDurationUs = -1;
-            this.videoDurationUs = videoDurationMs * 1000;
+        public interface EventListener {
+            void onSwitchToSteadyState(long elapsedMs);
+            void onAllChunksDownloaded(long totalBytes);
+            void onBufferLoadChanged(long bufferDurationMs);
+        }
+
+        public BufferBasedAdaptiveEvaluator(BandwidthMeter bandwidthMeter,
+                                            long videoDurationMs, Handler eventHandler,
+                                            EventListener eventListener, int reserviorDurationMs, int bufferDurationMs){
+            this(bandwidthMeter, videoDurationMs, eventHandler, eventListener);
+            this.reservoirDurationMs = reserviorDurationMs;
+            this.bufferDurationMs = bufferDurationMs;
+        }
+
+        public BufferBasedAdaptiveEvaluator(BandwidthMeter bandwidthMeter, long videoDurationMs, Handler eventHandler, EventListener eventListener){
+            this.bufferState=BufferState.STARTUP_STATE;
+            this.bandwidthMeter=bandwidthMeter;
+            this.prevBufferDurationUs=-1;
+            this.videoDurationUs=videoDurationMs*1000;
+            this.startTime=System.currentTimeMillis();
+            this.eventHandler=eventHandler;
+            this.eventListener=eventListener;
+            this.chunksByte= new HashMap<Long, Long>();
+            this.allChunksLoaded=false;
+            this.reservoirDurationMs = DEFAULT_RESERVOIR_DURATION_MS;
+            this.bufferDurationMs = DEFAULT_BUFFER_DURATION_MS;
         }
 
         @Override
@@ -499,153 +528,363 @@ public class LLEEJFormatEvaluator {
                              long playbackPositionUs, Format[] formats, Evaluation evaluation) {
             long bufferedDurationUs = queue.isEmpty() ? 0
                     : queue.get(queue.size() - 1).endTimeUs - playbackPositionUs;
+            notifyBufferLoadChanged(bufferedDurationUs / 1000);
+
+            for(int i=0;i<queue.size();i++){
+//            Log.e("ashkan_video", "\t"+i+": "+queue.get(i).format.bitrate+" "+queue.get(i).startTimeUs/1000+" : "+queue.get(i).endTimeUs/1000+" "+queue.get(i).isLoadFinished());
+
+                if(!chunksByte.containsKey(queue.get(i).startTimeUs)){
+                    chunksByte.put(queue.get(i).startTimeUs, queue.get(i).bytesLoaded());
+                }
+            }
+
 
 
             long bufferedEndTimeUs = queue.isEmpty() ? 0
                     : queue.get(queue.size() - 1).endTimeUs;
 
             Format current = evaluation.format;
+            if(current!=null){
+                Log.e("ashkan_video", "buffer duration: "+bufferedDurationUs/1000+" current bitrate: "+current.bitrate);
+            }
             Format ideal;
 
 
-            if (bufferState == BufferState.STARTUP_STATE) {
-                if (prevBufferDurationUs != -1 && prevBufferDurationUs > bufferedDurationUs) {
-                    bufferState = BufferState.STEADY_STATE;
-
-                } else if (determineBufferBasedIdealFormat(formats, current, bufferedDurationUs).bitrate > determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs).bitrate) {
-                    bufferState = BufferState.STEADY_STATE;
-
+            if(bufferState==BufferState.STARTUP_STATE){
+                if(prevBufferDurationUs!=-1 && prevBufferDurationUs>bufferedDurationUs){
+                    bufferState=BufferState.STEADY_STATE;
+                    Log.e("ashkan_video", "switch to STEADY_STATE, prev: "+prevBufferDurationUs/1000);
+                    notifyStateChanged(System.currentTimeMillis()-startTime);
+                }
+                else if(determineBufferBasedIdealFormat(formats, current, bufferedDurationUs).bitrate>determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs).bitrate){
+                    bufferState=BufferState.STEADY_STATE;
+                    Log.e("ashkan_video", "switch to STEADY_STATE");
+                    notifyStateChanged(System.currentTimeMillis()-startTime);
                 }
             }
-            prevBufferDurationUs = bufferedDurationUs;
+            prevBufferDurationUs=bufferedDurationUs;
+//        Log.e("ashkan_video", "buffer endtime: "+(bufferedEndTimeUs/1000)+" video end time: "+(videoDurationUs/1000));
 
+//        if (videoDurationUs-bufferedEndTimeUs<500000){
+//            ideal=current;
+//            if(!allChunksLoaded){
+//              long totalBytes=0;
+//              for(long chunk_key: chunksByte.keySet()){
+//                totalBytes+=chunksByte.get(chunk_key);
+//              }
+//              reportTotalBytes(totalBytes);
+//            }
+//            allChunksLoaded=true;
+////            Log.e("ashkan_video", "We have all the video in buffer!");
+//        }else{
+//            if(bufferState==BufferState.STARTUP_STATE){
+//                ideal = determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs);
+//            }else{
+//                ideal = determineBufferBasedIdealFormat(formats, current, bufferedDurationUs);
+//            }
+//        }
+            if(bufferState==BufferState.STARTUP_STATE){
+                ideal = determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs);
+            }else{
+                ideal = determineBufferBasedIdealFormat(formats, current, bufferedDurationUs);
+            }
 
-            if (videoDurationUs - bufferedEndTimeUs < 500000) {
-                ideal = current;
-
-            } else {
-                if (bufferState == BufferState.STARTUP_STATE) {
-                    ideal = determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs);
-                } else {
-                    ideal = determineBufferBasedIdealFormat(formats, current, bufferedDurationUs);
-                }
+            if (current != null && ideal != current) {
+                evaluation.trigger = FormatEvaluator.TRIGGER_ADAPTIVE;
+                Log.e("ashkan_video", current.bitrate+"->"+ideal.bitrate);
             }
             evaluation.format = ideal;
 
         }
 
-        private int bitrateToFormatIndex(int bitrate, Format[] formats) {
-            for (int i = 0; i < formats.length; i++) {
-                if (bitrate == formats[i].bitrate) {
+        protected int bitrateToFormatIndex(int bitrate, Format[] formats){
+            for(int i=0;i<formats.length;i++){
+                if(bitrate==formats[i].bitrate){
                     return i;
                 }
             }
             return -1;
         }
 
-        private Format determineBufferBasedIdealFormat(Format[] formats, Format current,
-                                                       long bufferedDurationUs) {
+        protected Format determineBufferBasedIdealFormat(Format[] formats, Format current,
+                                                         long bufferedDurationUs) {
             return formats[bufferOccupancyToFormatIndex(formats.length, bufferedDurationUs)];
         }
 
-        private Format determineCapacityBasedIdealFormat(Format[] formats, Format current, long bufferedDurationUs) {
-            /* //LLEEJ : Original BBA
-            if (current == null) {
-                return formats[formats.length - 1];
-            } else if (bandwidthMeter.getBitrateEstimate() > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
-                int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
-                if (idealIndex < 0) {
+        protected Format determineCapacityBasedIdealFormat(Format[] formats, Format current, long bufferedDurationUs) {
+            if(current==null){
+                return formats[formats.length-1];
+            }else if (bandwidthMeter.getBitrateEstimate()>bufferToStartupCoeff(bufferedDurationUs)*current.bitrate){
+                // Ashkan, why you minus 1 here?
+                int idealIndex=bitrateToFormatIndex(current.bitrate, formats)-1;
+                if(idealIndex<0){
                     return formats[0];
                 }
                 return formats[idealIndex];
 
             }
             return current;
-            */
-
-            if (current == null) {
-                return formats[formats.length - 1];
-            } else{
-                if(Configure.BT_ON){
-                    if (bandwidthMeter.getBitrateEstimate() > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
-                        int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
-                        if (idealIndex < 0) {
-                            return formats[0];
-                        }
-                        return formats[idealIndex];
-
-                    }
-                    else
-                        return current;
-                }
-                else{
-                    if (bandwidthMeter.getBitrateEstimate() * Configure.BT_COMPENSATION_PARAMETER > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
-                        int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
-                        if (idealIndex < 0) {
-                            return formats[0];
-                        }
-                        return formats[idealIndex];
-
-                    }
-                    else
-                        return current;
-                }
-
-            }
         }
 
         //this is the f function, it converts the buffer occupancy to formats indexes (linear function). formats array is sorted from high bitrate to low bitrate
-        private int bufferOccupancyToFormatIndex(int formatsLen, long bufferedDurationUs) {
-            /*
-            if (bufferedDurationUs < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
+        protected int bufferOccupancyToFormatIndex(int formatsLen, long bufferedDurationUs){
+            if(bufferedDurationUs<DEFAULT_RESERVOIR_DURATION_MS*1000){
                 return formatsLen - 1;
-            } else if (bufferedDurationUs > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
+            }else if(bufferedDurationUs>(DEFAULT_BUFFER_DURATION_MS*0.9*1000)){
                 return 0;
-            } else {
-                float bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
+            }else{
+                float bufferDurationIntervalUs=((DEFAULT_BUFFER_DURATION_MS-DEFAULT_RESERVOIR_DURATION_MS)/(formatsLen-1))*1000;
+                Log.e("ashkan_video", "index: "+(formatsLen-2-((int)((bufferedDurationUs-(DEFAULT_RESERVOIR_DURATION_MS*1000))/bufferDurationIntervalUs))));
 
-
-                return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
+                return formatsLen-2-(int)((bufferedDurationUs-(DEFAULT_RESERVOIR_DURATION_MS*1000))/bufferDurationIntervalUs);
             }
-            */
-            if(Configure.BT_ON) {
-                if (bufferedDurationUs * Configure.BT_COMPENSATION_PARAMETER < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
-                    return formatsLen - 1;
-                } else if (bufferedDurationUs * Configure.BT_COMPENSATION_PARAMETER > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
-                    return 0;
-                } else {
-                    double bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
-                    bufferDurationIntervalUs = bufferDurationIntervalUs * Configure.BT_COMPENSATION_PARAMETER;
-
-
-                    return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
-                }
-            }
-            else{
-                if (bufferedDurationUs < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
-                    return formatsLen - 1;
-                } else if (bufferedDurationUs > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
-                    return 0;
-                } else {
-                    double bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
-
-
-                    return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
-                }
-            }
-
         }
 
         //this is described in section 6 and it is for start-up phase
-        private int bufferToStartupCoeff(long bufferedDurationUs) {
-            if (bufferedDurationUs > DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000) {
+        private int bufferToStartupCoeff(long bufferedDurationUs){
+            if(bufferedDurationUs>DEFAULT_BUFFER_DURATION_MS*0.9*1000){
                 return 2;
-            } else if (bufferedDurationUs > DEFAULT_RESERVOIR_DURATION_MS * 1000) {
+            }else if(bufferedDurationUs>DEFAULT_RESERVOIR_DURATION_MS*1000){
                 return 4;
-            } else {
+            }else{
                 return 8;
             }
-
         }
+        private void notifyStateChanged(final long elapsedTimeMs){
+            if (eventHandler != null && eventListener != null) {
+                eventHandler.post(new Runnable()  {
+                    @Override
+                    public void run() {
+                        eventListener.onSwitchToSteadyState(elapsedTimeMs);
+                    }
+                });
+            }
+        }
+
+        private void reportTotalBytes(final long totalBytes){
+            if (eventHandler != null && eventListener != null) {
+                eventHandler.post(new Runnable()  {
+                    @Override
+                    public void run() {
+                        eventListener.onAllChunksDownloaded(totalBytes);
+                    }
+                });
+            }
+        }
+
+        private void notifyBufferLoadChanged(final long bufferDurationMs) {
+            if (eventHandler != null && eventListener != null) {
+                eventHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        eventListener.onBufferLoadChanged(bufferDurationMs);
+                    }
+                });
+            }
+        }
+
     }
+
+
+    //LLEEJ : BBA
+
+//    public static class BufferBasedAdaptiveEvaluator implements FormatEvaluator {
+//
+//        public static final int DEFAULT_BUFFER_DURATION_MS = 30000;
+//        public static final int DEFAULT_RESERVOIR_DURATION_MS = 10000;
+//
+//        public enum BufferState {
+//            STARTUP_STATE, STEADY_STATE
+//        }
+//
+//        private BufferState bufferState;
+//        private final BandwidthMeter bandwidthMeter;
+//
+//        //To check if we have to switch from startup to steady state
+//        private long prevBufferDurationUs;
+//
+//        //when the video approach the end and we have the whole chunks in the buffer,
+//        //buffer occupancy starts decreasing, but it should not trigger f function to reduce
+//        // bandwidth
+//        private long videoDurationUs;
+//
+//
+//        public BufferBasedAdaptiveEvaluator(BandwidthMeter bandwidthMeter, long videoDurationMs) {
+//            this.bufferState = BufferState.STARTUP_STATE;
+//            this.bandwidthMeter = bandwidthMeter;
+//            this.prevBufferDurationUs = -1;
+//            this.videoDurationUs = videoDurationMs * 1000;
+//        }
+//
+//        @Override
+//        public void enable() {
+//
+//        }
+//
+//        @Override
+//        public void disable() {
+//
+//        }
+//
+//        //Google Glass bitrates in formats array: 2235503 1119643 610891 247132 110307
+//        @Override
+//        public void evaluate(List<? extends MediaChunk> queue,
+//                             long playbackPositionUs, Format[] formats, Evaluation evaluation) {
+//            long bufferedDurationUs = queue.isEmpty() ? 0
+//                    : queue.get(queue.size() - 1).endTimeUs - playbackPositionUs;
+//
+//
+//            long bufferedEndTimeUs = queue.isEmpty() ? 0
+//                    : queue.get(queue.size() - 1).endTimeUs;
+//
+//            Format current = evaluation.format;
+//            Format ideal;
+//
+//
+//            if (bufferState == BufferState.STARTUP_STATE) {
+//                if (prevBufferDurationUs != -1 && prevBufferDurationUs > bufferedDurationUs) {
+//                    Log.d("BBA DEBUG","Change to STEADY_STATE1");
+//                    bufferState = BufferState.STEADY_STATE;
+//
+//                } else if (determineBufferBasedIdealFormat(formats, current, bufferedDurationUs).bitrate > determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs).bitrate) {
+//                    Log.d("BBA DEBUG","Change to STEADY_STATE2");
+//                    bufferState = BufferState.STEADY_STATE;
+//                }
+//
+//
+//
+//            }
+//            prevBufferDurationUs = bufferedDurationUs;
+//
+//
+//            if (videoDurationUs - bufferedEndTimeUs < 500000) {
+//                Log.d("BBA DEBUG","BB");
+//                ideal = current;
+//
+//            } else {
+//                if (bufferState == BufferState.STARTUP_STATE) {
+//                    ideal = determineCapacityBasedIdealFormat(formats, current, bufferedDurationUs);
+//                } else {
+//                    ideal = determineBufferBasedIdealFormat(formats, current, bufferedDurationUs);
+//                }
+//            }
+//            evaluation.format = ideal;
+//
+//        }
+//
+//        private int bitrateToFormatIndex(int bitrate, Format[] formats) {
+//            for (int i = 0; i < formats.length; i++) {
+//                if (bitrate == formats[i].bitrate) {
+//                    return i;
+//                }
+//            }
+//            Log.d("BBA DEBUG", bitrate + " AA");
+//            return -1;
+//        }
+//
+//        private Format determineBufferBasedIdealFormat(Format[] formats, Format current,
+//                                                       long bufferedDurationUs) {
+//            return formats[bufferOccupancyToFormatIndex(formats.length, bufferedDurationUs)];
+//        }
+//
+//        private Format determineCapacityBasedIdealFormat(Format[] formats, Format current, long bufferedDurationUs) {
+//            /* //LLEEJ : Original BBA
+//            if (current == null) {
+//                return formats[formats.length - 1];
+//            } else if (bandwidthMeter.getBitrateEstimate() > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
+//                int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
+//                if (idealIndex < 0) {
+//                    return formats[0];
+//                }
+//                return formats[idealIndex];
+//
+//            }
+//            return current;
+//            */
+//
+//            if (current == null) {
+//                return formats[formats.length - 1];
+//            } else{
+//                if(Configure.BT_ON){
+//                    if (bandwidthMeter.getBitrateEstimate() > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
+//                        int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
+//                        if (idealIndex < 0) {
+//                            return formats[0];
+//                        }
+//                        return formats[idealIndex];
+//
+//                    }
+//                    else
+//                        return current;
+//                }
+//                else{
+//                    if (bandwidthMeter.getBitrateEstimate() * Configure.BT_COMPENSATION_PARAMETER > bufferToStartupCoeff(bufferedDurationUs) * current.bitrate) {
+//                        int idealIndex = bitrateToFormatIndex(current.bitrate, formats) - 1;
+//                        if (idealIndex < 0) {
+//                            return formats[0];
+//                        }
+//                        return formats[idealIndex];
+//
+//                    }
+//                    else
+//                        return current;
+//                }
+//
+//            }
+//        }
+//
+//        //this is the f function, it converts the buffer occupancy to formats indexes (linear function). formats array is sorted from high bitrate to low bitrate
+//        private int bufferOccupancyToFormatIndex(int formatsLen, long bufferedDurationUs) {
+//            /*
+//            if (bufferedDurationUs < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
+//                return formatsLen - 1;
+//            } else if (bufferedDurationUs > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
+//                return 0;
+//            } else {
+//                float bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
+//
+//
+//                return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
+//            }
+//            */
+//            if(Configure.BT_ON) {
+//                if (bufferedDurationUs * Configure.BT_COMPENSATION_PARAMETER < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
+//                    return formatsLen - 1;
+//                } else if (bufferedDurationUs * Configure.BT_COMPENSATION_PARAMETER > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
+//                    return 0;
+//                } else {
+//                    double bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
+//                    bufferDurationIntervalUs = bufferDurationIntervalUs * Configure.BT_COMPENSATION_PARAMETER;
+//
+//
+//                    return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
+//                }
+//            }
+//            else{
+//                Log.d("BBA DEBUG","AA");
+//                if (bufferedDurationUs < DEFAULT_RESERVOIR_DURATION_MS * 1000) {//제일 안좋을때
+//                    return formatsLen - 1;
+//                } else if (bufferedDurationUs > (DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000)) { // 제일 좋을때
+//                    return 0;
+//                } else {
+//                    double bufferDurationIntervalUs = ((DEFAULT_BUFFER_DURATION_MS - DEFAULT_RESERVOIR_DURATION_MS) / (formatsLen - 1)) * 1000;
+//                    Log.d("BBA DEBUG", "bufferedDurationUs : " + bufferedDurationUs + "bufferedDurationUs : " + bufferDurationIntervalUs + "result  : " + (formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs)));
+//                    return formatsLen - 2 - (int) ((bufferedDurationUs - (DEFAULT_RESERVOIR_DURATION_MS * 1000)) / bufferDurationIntervalUs);
+//                }
+//            }
+//
+//        }
+//
+//        //this is described in section 6 and it is for start-up phase
+//        private int bufferToStartupCoeff(long bufferedDurationUs) {
+//            if (bufferedDurationUs > DEFAULT_BUFFER_DURATION_MS * 0.9 * 1000) {
+//                return 2;
+//            } else if (bufferedDurationUs > DEFAULT_RESERVOIR_DURATION_MS * 1000) {
+//                return 4;
+//            } else {
+//                return 8;
+//            }
+//
+//        }
+//    }
 }

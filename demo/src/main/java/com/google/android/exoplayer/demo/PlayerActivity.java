@@ -169,6 +169,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
     setContentView(R.layout.player_activity);
 
+    Log.d("LLEEJ", "AAAAA");
 
     View root = findViewById(R.id.root);
     root.setOnTouchListener(new OnTouchListener() {

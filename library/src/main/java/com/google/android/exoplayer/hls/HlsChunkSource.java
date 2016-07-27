@@ -254,6 +254,8 @@ public class HlsChunkSource implements HlsTrackSelector.Output {
       try {
         trackSelector.selectTracks(masterPlaylist, this);
         selectTrack(0);
+
+
       } catch (IOException e) {
         fatalError = e;
       }
@@ -462,6 +464,11 @@ public class HlsChunkSource implements HlsTrackSelector.Output {
     int trigger = Chunk.TRIGGER_UNSPECIFIED;
     Format format = variants[selectedVariantIndex].format;
 
+    for(int i = 0; i < variants.length; i++) {
+      Format formatTemp = variants[i].format;
+      Log.d("LLEEJ", "AVAILABLE FORMAT : " + formatTemp.width + "x" + formatTemp.height + " , " + formatTemp.bitrate);
+    }
+
     // Configure the extractor that will read the chunk.
     HlsExtractorWrapper extractorWrapper;
     String lastPathSegment = chunkUri.getLastPathSegment();
@@ -637,6 +644,8 @@ public class HlsChunkSource implements HlsTrackSelector.Output {
   }
 
   // Private methods.
+
+  //LLEEJ: HLS Bitrate 계산 부분
 
   private int getNextVariantIndex(TsChunk previousTsChunk, long playbackPositionUs) {
     clearStaleBlacklistedVariants();
