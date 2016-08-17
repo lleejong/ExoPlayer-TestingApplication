@@ -537,6 +537,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
       // Nothing to load.
       return;
     }
+    //LLEEJ: Inter-GET
     currentLoadStartTimeMs = SystemClock.elapsedRealtime();
     if (isMediaChunk(currentLoadable)) {
       BaseMediaChunk mediaChunk = (BaseMediaChunk) currentLoadable;

@@ -21,6 +21,7 @@ import com.google.android.exoplayer.util.SlidingPercentile;
 import com.google.android.exoplayer.util.SystemClock;
 
 import android.os.Handler;
+import android.util.Log;
 
 /**
  * Counts transferred bytes while transfers are open and creates a bandwidth sample and updated
@@ -39,7 +40,7 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
   private long startTimeMs;
   private long bitrateEstimate;
   private int streamCount;
-
+  private int byteCount;
   public DefaultBandwidthMeter() {
     this(null, null);
   }
@@ -76,10 +77,15 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
       startTimeMs = clock.elapsedRealtime();
     }
     streamCount++;
+    byteCount = 0;
   }
 
   @Override
   public synchronized void onBytesTransferred(int bytes) {
+    byteCount++;
+    long nowMs = clock.elapsedRealtime();
+    int elapsedMs = (int) (nowMs - startTimeMs);
+    notifyBytesTransferred(elapsedMs,bytes);
     bytesAccumulator += bytes;
   }
 
@@ -96,12 +102,25 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
       bitrateEstimate = Float.isNaN(bandwidthEstimateFloat) ? NO_ESTIMATE
           : (long) bandwidthEstimateFloat;
       notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate , bitsPerSecond);
+      //notifyBytesTransferred(elapsedMs, bytesAccumulator);
+      Log.d("LLEEJ BYTE DEBUG", "onTransferEnd : "+"streamCount " + streamCount +" streams , ByteCount = " + byteCount);
     }
     streamCount--;
     if (streamCount > 0) {
       startTimeMs = nowMs;
     }
     bytesAccumulator = 0;
+  }
+
+  private void notifyBytesTransferred(final int elapsedMs, final long bytes) {
+    if (eventHandler != null && eventListener != null) {
+      eventHandler.post(new Runnable()  {
+        @Override
+        public void run() {
+          eventListener.onBytesTransferred(elapsedMs, bytes);
+        }
+      });
+    }
   }
 
   private void notifyBandwidthSample(final int elapsedMs, final long bytes, final long bitrate, final float bitsPerSecond) {

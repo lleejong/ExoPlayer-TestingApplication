@@ -21,6 +21,7 @@ import com.google.android.exoplayer.TimeRange;
 import com.google.android.exoplayer.audio.AudioTrack;
 import com.google.android.exoplayer.chunk.Format;
 import com.google.android.exoplayer.demo.Log.BandwidthLogData;
+import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.util.VerboseLogUtil;
 
@@ -37,7 +38,7 @@ import java.util.Locale;
  * Logs player events using {@link Log}.
  */
 public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener,
-    DemoPlayer.InternalErrorListener {
+    DemoPlayer.InternalErrorListener, DemoPlayer.BytesListener{
 
   private static final String TAG = "EventLogger";
   private static final NumberFormat TIME_FORMAT;
@@ -54,6 +55,11 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   private int droppedFrameCount = 0;
   private int rebufferingCount = 0;
   private ArrayList<BandwidthLogData> bandwidthLogDataList;
+
+  private ArrayList<Bytes> bytesArrayList = new ArrayList<Bytes>();
+
+  double preDataTime = 0;
+  long bytesAccumulates = 0;
 
 
 
@@ -79,7 +85,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   @Override
   public void onStateChanged(boolean playWhenReady, int state) {
     Log.d(TAG, "state [" + getSessionTimeString() + ", " + playWhenReady + ", "
-        + getStateString(state) + "]");
+            + getStateString(state) + "]");
   }
 
   @Override
@@ -141,7 +147,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   @Override
   public void onAudioFormatEnabled(Format format, int trigger, long mediaTimeMs) {
     Log.d(TAG, "audioFormat [" + getSessionTimeString() + ", " + format.id + ", "
-        + Integer.toString(trigger) + "]");
+            + Integer.toString(trigger) + "]");
   }
 
   // DemoPlayer.InternalErrorListener
@@ -212,7 +218,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   @Override
   public void onBufferLoadChanged(long bufferDurationMs) {
-    Log.d("onBufferLoadChanged","onBufferLoadChanged : " + bufferDurationMs);
+    Log.d("onBufferLoadChanged", "onBufferLoadChanged : " + bufferDurationMs);
   }
 
   private void printInternalError(String type, Exception e) {
@@ -255,5 +261,33 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   public ArrayList<BandwidthLogData> getBandwidthLogDataList(){
     return bandwidthLogDataList;
+  }
+
+  @Override
+  public void onBytesTransferred(int elapsedMs, long bytes) {
+    double time = Double.parseDouble(getSessionTimeString());
+    if(preDataTime == time){
+      bytesAccumulates += bytes;
+    }
+    else{
+      //Log.d("LLEEJ BYTE DEBUG", preDataTime + " , " + bytesAccumulates);
+      bytesArrayList.add(new Bytes(preDataTime + "", bytesAccumulates + ""));
+      preDataTime = time;
+      bytesAccumulates = 0;
+    }
+
+  }
+
+  private void checkAdditionalBytesData(){
+    if(bytesAccumulates != 0)
+      bytesArrayList.add(new Bytes(preDataTime + "",bytesAccumulates + ""));
+
+    bytesAccumulates = 0;
+    preDataTime = 0;
+  }
+
+  public ArrayList<Bytes> getBytesArrayList(){
+    checkAdditionalBytesData();
+    return bytesArrayList;
   }
 }

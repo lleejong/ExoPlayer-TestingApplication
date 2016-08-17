@@ -338,6 +338,7 @@ public class DefaultHttpDataSource implements HttpDataSource {
     if (!allowCrossProtocolRedirects) {
       // HttpURLConnection disallows cross-protocol redirects, but otherwise performs redirection
       // automatically. This is the behavior we want, so use it.
+
       HttpURLConnection connection = makeConnection(
           url, postBody, position, length, allowGzip, true /* followRedirects */);
       return connection;
@@ -384,8 +385,10 @@ public class DefaultHttpDataSource implements HttpDataSource {
   private HttpURLConnection makeConnection(URL url, byte[] postBody, long position,
       long length, boolean allowGzip, boolean followRedirects) throws IOException {
     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
     connection.setConnectTimeout(connectTimeoutMillis);
     connection.setReadTimeout(readTimeoutMillis);
+
     synchronized (requestProperties) {
       for (Map.Entry<String, String> property : requestProperties.entrySet()) {
         connection.setRequestProperty(property.getKey(), property.getValue());

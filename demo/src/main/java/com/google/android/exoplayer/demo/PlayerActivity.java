@@ -24,6 +24,7 @@ import com.google.android.exoplayer.MediaFormat;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
 import com.google.android.exoplayer.demo.Log.BandwidthLogData;
+import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.player.DashRendererBuilder;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
@@ -456,13 +457,44 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     //String fileName = dateFormat.format(new Date()).toString();
 
     //fileName += ".csv";
-    Log.d("LLEEJ","PlayerActivity::start write to File, id = " + id);
+    Log.d("LLEEJ", "PlayerActivity::start write to File, id = " + id);
+
+
+
+
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
+    File bytesDataBaseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpBytesData");
 
     if(!baseDir.exists())
       baseDir.mkdirs();
-    try {
 
+    if(!bytesDataBaseDir.exists())
+      bytesDataBaseDir.mkdirs();
+
+    try {
+      //Bytes Data Writting
+      File newBytesDataFile = new File(bytesDataBaseDir.getPath()+"/"+id+".csv");
+      newBytesDataFile.createNewFile();
+      PrintWriter printBytesDataWriter = new PrintWriter(newBytesDataFile);
+      ArrayList<Bytes> bytesArrayList = eventLogger.getBytesArrayList();
+
+      String bytesTimestampLine = "";
+      String bytesLine = "";
+      for(Bytes bytes : bytesArrayList){
+        bytesTimestampLine += bytes.getTimestamp()+",";
+        bytesLine += bytes.getBytes()+",";
+      }
+
+      bytesTimestampLine = bytesTimestampLine.substring(0, bytesTimestampLine.length() - 1);
+      bytesLine = bytesLine.substring(0, bytesLine.length() - 1);
+      printBytesDataWriter.println(bytesTimestampLine);
+      printBytesDataWriter.println(bytesLine);
+      printBytesDataWriter.close();
+
+      //end
+
+
+      //bitrate Data Writting
       File newFile = new File(baseDir.getPath()+"/"+id+".csv");
       newFile.createNewFile();
       PrintWriter printWriter = new PrintWriter(newFile);
@@ -871,6 +903,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
         : uri.getLastPathSegment();
     return Util.inferContentType(lastPathSegment);
   }
+
 
   private static final class KeyCompatibleMediaController extends MediaController {
 

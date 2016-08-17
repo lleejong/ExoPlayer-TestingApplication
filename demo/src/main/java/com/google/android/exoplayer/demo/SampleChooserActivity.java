@@ -15,6 +15,7 @@
  */
 package com.google.android.exoplayer.demo;
 
+import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.Log.Score;
 import com.google.android.exoplayer.demo.Samples.Sample;
@@ -115,7 +116,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     numberPicker = (NumberPicker)findViewById(R.id.numberpicker);
 
     numberPicker.setMinValue(1);
-    numberPicker.setMaxValue(20);
+    numberPicker.setMaxValue(30);
     numberPicker.setValue(1);
 
     statusView = (TextView) findViewById(R.id.statusView);
@@ -210,6 +211,15 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     statusView.append(str + "\n");
   }
 
+  private void deleteTempBytesDataFiles(){
+    File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpBytesData");
+    File[] list = baseDir.listFiles();
+    if(list.length > 0) {
+      for (int i = 0; i < list.length; i++){
+        list[i].delete();
+      }
+    }
+  }
   private void deleteTempFiles(){
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
     File[] list = baseDir.listFiles();
@@ -219,6 +229,39 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       }
     }
 
+  }
+
+  private ArrayList<String> readBytesDataToDevice(){
+    File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpBytesData");
+    File[] list = baseDir.listFiles();
+
+    ArrayList<File> actualFileList = new ArrayList<File>();
+    ArrayList<String> wholeLogList = new ArrayList<String>();
+
+    for(int i = 0; i < list.length; i++){
+      File file = list[i];
+      if(file.isFile() || file.getName().contains(".csv")){
+        actualFileList.add(file);
+      }
+    }
+    try {
+      for(File readFile : actualFileList){
+        BufferedReader reader = new BufferedReader(new FileReader(readFile));
+        String firstLine = reader.readLine();
+        wholeLogList.add(firstLine);
+        String secondLine = reader.readLine();
+        wholeLogList.add(secondLine);
+        reader.close();
+      }
+      deleteTempBytesDataFiles();
+
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return wholeLogList;
   }
 
   private ArrayList<String> readLogToDevice(){
@@ -323,7 +366,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       else
         fileName += "_"+tagText;
     }
-    fileName += ".csv";
+    //fileName += ".csv";
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG");
 
     if(!baseDir.exists())
@@ -331,10 +374,12 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     //File newFolder = new File(folderName);
     //File newFolder = new File(folderPath);
     File newFile = null;
+    File newBytesDataFile = null;
 
     try {
 
-      newFile = new File(baseDir.getPath()+"/"+fileName);
+      //LogFile
+      newFile = new File(baseDir.getPath()+"/"+fileName+".csv");
       newFile.createNewFile();
       PrintWriter printWriter = new PrintWriter(newFile);
 
@@ -500,6 +545,67 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
       printWriter.close();
 
+      //Bytes Data
+
+      newBytesDataFile = new File(baseDir.getPath()+"/"+fileName+"_bytesData.csv");
+      newBytesDataFile.createNewFile();
+      PrintWriter bytesDataPrintWriter = new PrintWriter(newBytesDataFile);
+
+      ArrayList<String> wholeBytesDataList = readBytesDataToDevice();
+
+      ArrayList<ArrayList<Bytes>> totalBytesDataList = new ArrayList<ArrayList<Bytes>>();
+
+      boolean bytesDataFlag = true;
+      String[] bytesDataBuffer = null;
+
+      for(String line : wholeBytesDataList){
+        String[] temp = line.split(",");
+        if(bytesDataFlag){
+          bytesDataBuffer = temp;
+          bytesDataFlag = false;
+        }
+        else{
+          ArrayList<Bytes> bytesDataList = new ArrayList<Bytes>();
+          if(temp.length != bytesDataBuffer.length){
+            Log.d("LLEEJ", "FileWriter :: could not occur");
+          }
+          for(int j = 0; j < temp.length; j++){
+              bytesDataList.add(new Bytes(bytesDataBuffer[j], temp[j]));
+          }
+          bytesDataBuffer = null;
+          totalBytesDataList.add(bytesDataList);
+          bytesDataFlag = true;
+        }
+      }
+
+      String bytesDataFileHeader = "";
+      for(int i = 0; i < totalBytesDataList.size() ; i++){
+        bytesDataFileHeader += "Time(s),Bytes,";
+      }
+      bytesDataFileHeader = bytesDataFileHeader.substring(0,bytesDataFileHeader.length()-1);
+      bytesDataPrintWriter.println(bytesDataFileHeader);
+
+      int cursor = 0;
+      int completed = 0;
+      while(completed != totalBytesDataList.size()){
+        String line = "";
+        completed = 0;
+        for(int i = 0 ; i < totalBytesDataList.size(); i++){
+          if(totalBytesDataList.get(i).size() <= cursor){
+            line += ",,";
+            completed++;
+          }
+          else{
+            Bytes bytes = totalBytesDataList.get(i).get(cursor);
+            line += bytes.getTimestamp() + "," + bytes.getBytes()+",";
+          }
+        }
+        line = line.substring(0, line.length()-1);
+        bytesDataPrintWriter.println(line);
+        cursor++;
+      }
+      bytesDataPrintWriter.close();
+
 
 
       //ArrayList<LogData> timestampList = wholeLogList.get(0);
@@ -537,8 +643,8 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       try {
         Socket socket = new Socket("192.9.81.40", 9999);
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-        dos.writeUTF(fileName);
-        Log.d("LLEEJ", " Try to send" + fileName);
+        dos.writeUTF(fileName+".csv");
+        Log.d("LLEEJ", " Try to send" + fileName+".csv");
         dos.writeUTF(newFile.length() + "");
         Log.d("LLEEJ", "FileSize : " + newFile.length());
 
@@ -561,6 +667,35 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
         e.printStackTrace();
       }
     }
+
+    try {
+      Socket socket = new Socket("192.9.81.40", 9999);
+      DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+      dos.writeUTF(fileName+"_bytesData.csv");
+      Log.d("LLEEJ", " Try to send" + fileName + "_bytesData.csv");
+      dos.writeUTF(newBytesDataFile.length() + "");
+      Log.d("LLEEJ", "FileSize : " + newBytesDataFile.length());
+
+      InputStream fis = new FileInputStream(newBytesDataFile);
+      BufferedInputStream bis = new BufferedInputStream(fis);
+
+      Log.d("LLEEJ", "Sending...");
+
+      byte[] buff = new byte[4096];
+      int len = 0;
+      while ((len = bis.read(buff)) > 0) {
+        dos.write(buff, 0, len);
+      }
+
+      dos.flush();
+      dos.close();
+      bis.close();
+      fis.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+
     updateStatusView("Success Testing");
     startButton.setEnabled(true);
 
@@ -618,7 +753,10 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       case SampleChooserActivity.MODE_DASH_TEST1:
       case SampleChooserActivity.MODE_DASH_FIXED:
       case SampleChooserActivity.MODE_BBA:
+        //sample = Samples.WIDEVINE_HDCP[0];
         sample = Samples.YOUTUBE_DASH_MP4[0];
+        //sample = Samples.MISC[4];
+        //sample = Samples.WIDEVINE_H264_MP4_CLEAR[0];
         break;
       case SampleChooserActivity.MODE_HLS:
         sample = Samples.HLS[5];

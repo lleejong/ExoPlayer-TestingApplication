@@ -47,7 +47,7 @@ import java.util.Locale;
   }
 
   public static final Sample[] YOUTUBE_DASH_MP4 = new Sample[] {
-          //new Sample("Big Buck Bunny 4s","http://concert.itec.aau.at/SVCDataset/dataset/mpd/BBB-II-1080p.mpd",Util.TYPE_DASH),
+          //new Sample("Big Buck Bunny 2s","http://www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/2sec/BigBuckBunny_2s_simple_2014_05_09.mpd",Util.TYPE_DASH),
 
           new Sample("Google Glass (MP4,H264)",
         "http://www.youtube.com/api/manifest/dash/id/bf5bb2419360daf1/source/youtube?"

@@ -96,9 +96,9 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
   }
 
 
-//  public interface BitrateListener {
-//    void onByteDownloaded(long elapsedMs, long bytes);
-//  }
+  public interface BytesListener {
+    void onBytesTransferred(int elapsedMs, long bytes);
+  }
 
 
   /**
@@ -139,6 +139,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     void onSwitchToSteadyState(long elapsedMs);
     void onAllChunksDownloaded(long totalBytes);
     void onBufferLoadChanged(long bufferDurationMs);
+    void onBytesTransferred(int elpasedMs, long bytes);
   }
 
   /**
@@ -197,6 +198,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
   private Id3MetadataListener id3MetadataListener;
   private InternalErrorListener internalErrorListener;
   private InfoListener infoListener;
+  private BytesListener bytesListener;
 
   public DemoPlayer(RendererBuilder rendererBuilder) {
     this.rendererBuilder = rendererBuilder;
@@ -225,6 +227,10 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
 
   public void setInternalErrorListener(InternalErrorListener listener) {
     internalErrorListener = listener;
+  }
+
+  public void setBitrateListenenr(BytesListener listener){
+    bytesListener = listener;
   }
 
   public void setInfoListener(InfoListener listener) {
@@ -476,6 +482,14 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
       infoListener.onBandwidthSample(elapsedMs, bytes, bitrateEstimate, bitsPerSecond);
     }
   }
+
+  @Override
+  public void onBytesTransferred(int elapsedMs, long bytes) {
+    if (infoListener != null) {
+      infoListener.onBytesTransferred(elapsedMs, bytes);
+    }
+  }
+
 
   @Override
   public void onDownstreamFormatChanged(int sourceId, Format format, int trigger,

@@ -491,6 +491,7 @@ public class DashChunkSource implements ChunkSource, Output {
           periodHolder.localIndex, evaluation.trigger);
       lastChunkWasInitialization = true;
       out.chunk = initializationChunk;
+      Log.d("INTERGET DEBUG","AA"+ pendingInitializationUri.toString());
       return;
     }
 
@@ -501,6 +502,7 @@ public class DashChunkSource implements ChunkSource, Output {
         mediaFormat, enabledTrack, segmentNum, evaluation.trigger);
     lastChunkWasInitialization = false;
     out.chunk = nextMediaChunk;
+    Log.d("INTERGET DEBUG","BB"+ segmentNum);
   }
 
   @Override
@@ -701,13 +703,16 @@ public class DashChunkSource implements ChunkSource, Output {
       PeriodHolder periodHolder, RepresentationHolder representationHolder, DataSource dataSource,
       MediaFormat mediaFormat, ExposedTrack enabledTrack, int segmentNum, int trigger) {
     Representation representation = representationHolder.representation;
+
     Format format = representation.format;
     long startTimeUs = representationHolder.getSegmentStartTimeUs(segmentNum);
     long endTimeUs = representationHolder.getSegmentEndTimeUs(segmentNum);
+    Log.d("SEGMENT DEBUG , DashChunkSource.newMediaChunk()", (endTimeUs - startTimeUs) + "");
     RangedUri segmentUri = representationHolder.getSegmentUrl(segmentNum);
     DataSpec dataSpec = new DataSpec(segmentUri.getUri(), segmentUri.start, segmentUri.length,
         representation.getCacheKey());
 
+    //LLEEJ: Inter-GET 초기
     long sampleOffsetUs = periodHolder.startTimeUs - representation.presentationTimeOffsetUs;
     if (mimeTypeIsRawText(format.mimeType)) {
       return new SingleSampleMediaChunk(dataSource, dataSpec, Chunk.TRIGGER_INITIAL, format,
