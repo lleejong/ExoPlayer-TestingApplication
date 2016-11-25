@@ -15,6 +15,9 @@
  */
 package com.google.android.exoplayer.util;
 
+import com.google.android.exoplayer.dash.mpd.AdaptationSet;
+import com.google.android.exoplayer.dash.mpd.MediaPresentationDescription;
+import com.google.android.exoplayer.dash.mpd.Representation;
 import com.google.android.exoplayer.upstream.Loader;
 import com.google.android.exoplayer.upstream.Loader.Loadable;
 import com.google.android.exoplayer.upstream.UriDataSource;
@@ -23,11 +26,14 @@ import com.google.android.exoplayer.upstream.UriLoadable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 
 /**
@@ -171,12 +177,9 @@ public class ManifestFetcher<T> implements Loader.Callback {
    * @param callback The callback to receive the result.
    */
   public void singleLoad(Looper callbackLooper, final ManifestCallback<T> callback) {
-    Log.d("LLEEJ", "ManifestFetcher A");
     SingleFetchHelper fetchHelper = new SingleFetchHelper(
         new UriLoadable<>(manifestUri, uriDataSource, parser), callbackLooper, callback);
-    Log.d("LLEEJ","ManifestFetcher B");
     fetchHelper.startLoading();
-    Log.d("LLEEJ","ManifestFetcher C");
   }
 
   /**
@@ -278,6 +281,10 @@ public class ManifestFetcher<T> implements Loader.Callback {
     manifestLoadCompleteTimestamp = SystemClock.elapsedRealtime();
     loadExceptionCount = 0;
     loadException = null;
+
+    MediaPresentationDescription mpd = (MediaPresentationDescription) manifest;
+    AdaptationSet adtSet = mpd.getPeriod(0).adaptationSets.get(0);
+
 
     if (manifest instanceof RedirectingManifest) {
       RedirectingManifest redirectingManifest = (RedirectingManifest) manifest;

@@ -42,6 +42,7 @@ import com.google.android.exoplayer.util.ManifestFetcher;
 import com.google.android.exoplayer.util.ManifestFetcher.ManifestCallback;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -94,6 +95,7 @@ public class DashRendererBuilder implements ManifestCallback<MediaPresentationDe
       for (int j = 0; j < adaptationSet.representations.size(); j++) {
         Representation representation = adaptationSet.representations.get(j);
         String codecs = representation.format.codecs;
+        Log.d("LLEEJ, MPD2", "ManifestFetcher onLoadCompleted(): " + representation.getFormat().width + "," + representation.getFormat().height);
         if (adaptationSetType == AdaptationSet.TYPE_AUDIO && audioRepresentation == null) {
           audioRepresentation = representation;
           audioRepresentationIsOpus = !TextUtils.isEmpty(codecs) && codecs.startsWith("opus");

@@ -6,6 +6,7 @@ import android.util.Log;
 import com.google.android.exoplayer.demo.CompetingFlowClient;
 import com.google.android.exoplayer.demo.Configure;
 import com.google.android.exoplayer.demo.PlayerActivity;
+import com.google.android.exoplayer.demo.SampleChooserActivity;
 
 /**
  * Created by lleej on 2016-04-28.
@@ -39,7 +40,7 @@ public class SessionTimer extends Thread{
                 }
             }
 
-            if (timeMs > 136) {
+            if (timeMs > SampleChooserActivity.VIDEO_DURATION) {
                 if(Configure.COMPETING_FLOW_EXPERI)
                     cfClient.sendMessage(CompetingFlowClient.MSG_TYPE_IPERF_END);
                 mHandler.post(new Runnable() {

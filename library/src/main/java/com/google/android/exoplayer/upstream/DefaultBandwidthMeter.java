@@ -103,7 +103,7 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
           : (long) bandwidthEstimateFloat;
       notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate , bitsPerSecond);
       //notifyBytesTransferred(elapsedMs, bytesAccumulator);
-      Log.d("LLEEJ BYTE DEBUG", "onTransferEnd : "+"streamCount " + streamCount +" streams , ByteCount = " + byteCount);
+      //Log.d("LLEEJ BYTE DEBUG", "onTransferEnd : "+"streamCount " + streamCount +" streams , ByteCount = " + byteCount);
     }
     streamCount--;
     if (streamCount > 0) {

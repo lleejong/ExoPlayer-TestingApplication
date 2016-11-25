@@ -40,7 +40,14 @@
         android:id="@+id/tagEdit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
-
+    <EditText
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:hint="Duration"
+        android:id="@+id/durationEdit"
+        android:inputType="numberDecimal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
     <Button
         android:id="@+id/startButton"

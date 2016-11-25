@@ -18,6 +18,7 @@ package com.google.android.exoplayer.demo;
 import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.Log.Score;
+import com.google.android.exoplayer.demo.Log.VideoSize;
 import com.google.android.exoplayer.demo.Samples.Sample;
 
 import android.app.Activity;
@@ -66,46 +67,32 @@ import java.util.Set;
 public class SampleChooserActivity extends Activity implements View.OnClickListener{
 
   public static final int MODE_DASH = 0;
-  public static final int MODE_DASH_FIXED = 1;
-  public static final int MODE_DASH_TEST1 = 2;
-  public static final int MODE_HLS = 3;
-  public static final int MODE_SS = 4;
+  public static final int MODE_DASH_RB_2S = 1;
+  public static final int MODE_DASH_RB_4S = 2;
+  public static final int MODE_DASH_RB_10S = 3;
+  public static final int MODE_DASH_RB_15S = 4;
   public static final int MODE_BBA = 5;
+  public static final int MODE_BBA_RB_2S= 6;
+  public static final int MODE_BBA_RB_4S = 7;
+  public static final int MODE_BBA_RB_10S = 8;
+  public static final int MODE_BBA_RB_15S = 9;
+  public static final int MODE_HLS = 10;
+  public static final int MODE_SS = 11;
+
+  public static int VIDEO_DURATION = 120;
 
   private TextView statusView;
   private Button startButton;
   private NumberPicker numberPicker;
   private EditText tagEdit;
+  private EditText durationEdit;
 
   private int confirmedCount = 0;
   private int remainedCount = 0;
+
   private int selectedMode;
   private String tagText;
   private Spinner s;
-
-
-  public static String getModeToString(int mode){
-    switch(mode){
-      case 0:
-        return "DASH";
-      case 1:
-        return "DASH_FIXED";
-      case 2:
-        return "DASH_TEST1";
-      case 3:
-        return "HLS";
-      case 4:
-        return "SS";
-      case 5:
-        return "BBA";
-
-      default:
-        return "";
-    }
-  }
-
-
-
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -130,11 +117,14 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
     tagEdit = (EditText) findViewById(R.id.tagEdit);
 
-    final String[] items = {"DASH", "DASH_FIXED" , "DASH_TEST1", "HLS", "SmoothStreaming", "BBA"};
+    final String[] items = {"DASH", "DASH_RB_2S", "DASH_RB_4S", "DASH_RB_10S", "DASH_RB_15S", "BBA", "BBA_RB_2S","BBA_RB_4S", "BBA_RB_10S", "BBA_RB_15S", "HLS", "SS"};
 
     ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.spinner,items);
     s = (Spinner)findViewById(R.id.spinner);
     s.setAdapter(adapter);
+
+    durationEdit = (EditText) findViewById(R.id.durationEdit);
+    durationEdit.setText(VIDEO_DURATION + "");
 
 
     BluetoothAdapter mBTAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -149,59 +139,6 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
     StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
     StrictMode.setThreadPolicy(policy);
-
-
-
-    /*
-    setContentView(R.layout.sample_chooser_activity);
-
-
-    final List<SampleGroup> sampleGroups = new ArrayList<>();
-    SampleGroup group = new SampleGroup("YouTube DASH");
-    group.addAll(Samples.YOUTUBE_DASH_MP4);
-    group.addAll(Samples.YOUTUBE_DASH_WEBM);
-    sampleGroups.add(group);
-    group = new SampleGroup("Widevine DASH Policy Tests (GTS)");
-    group.addAll(Samples.WIDEVINE_GTS);
-    sampleGroups.add(group);
-    group = new SampleGroup("Widevine HDCP Capabilities Tests");
-    group.addAll(Samples.WIDEVINE_HDCP);
-    sampleGroups.add(group);
-    group = new SampleGroup("Widevine DASH: MP4,H264");
-    group.addAll(Samples.WIDEVINE_H264_MP4_CLEAR);
-    group.addAll(Samples.WIDEVINE_H264_MP4_SECURE);
-    sampleGroups.add(group);
-    group = new SampleGroup("Widevine DASH: WebM,VP9");
-    group.addAll(Samples.WIDEVINE_VP9_WEBM_CLEAR);
-    group.addAll(Samples.WIDEVINE_VP9_WEBM_SECURE);
-    sampleGroups.add(group);
-    group = new SampleGroup("Widevine DASH: MP4,H265");
-    group.addAll(Samples.WIDEVINE_H265_MP4_CLEAR);
-    group.addAll(Samples.WIDEVINE_H265_MP4_SECURE);
-    sampleGroups.add(group);
-    group = new SampleGroup("SmoothStreaming");
-    group.addAll(Samples.SMOOTHSTREAMING);
-    sampleGroups.add(group);
-    group = new SampleGroup("HLS");
-    group.addAll(Samples.HLS);
-    sampleGroups.add(group);
-    group = new SampleGroup("Misc");
-    group.addAll(Samples.MISC);
-    sampleGroups.add(group);
-    ExpandableListView sampleList = (ExpandableListView) findViewById(R.id.sample_list);
-    sampleList.setAdapter(new SampleAdapter(this, sampleGroups));
-    sampleList.setOnChildClickListener(new OnChildClickListener() {
-      @Override
-      public boolean onChildClick(ExpandableListView parent, View view, int groupPosition,
-          int childPosition, long id) {
-        onSampleSelected(sampleGroups.get(groupPosition).samples.get(childPosition));
-        return true;
-      }
-    });
-
-    */
-
-
 
   }
 
@@ -300,55 +237,27 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   // DASH
 
   private static String convert(int size) { // System.out.println(size+"");
-    if (size == 144) {
-      return "110.578";
-    } else if (size == 240) {
-      return "246.236";
-    } else if (size == 360) {
-      return "617.173";
-    } else if (size == 480) {
-      return "1118.095";
-    } else if (size == 720) {
-      return "2270.192";
+    ArrayList<VideoSize> availableVideoSize = EventLogger.getAvailableVideoSize();
+    for(VideoSize videoSize : availableVideoSize){
+      if(videoSize.getHeight() == size)
+        return (videoSize.getBps() / 1000.0) + "";
     }
     return "";
-
   }
 
 
-  private static double convert(String str) { // System.out.println(size+"");
+  public static double convert(String str) { // System.out.println(size+"");
+    ArrayList<VideoSize> availableVideoSize = EventLogger.getAvailableVideoSize();
     int size = Integer.parseInt(str);
-    if (size == 144) {
-      return 110.578;
-    } else if (size == 240) {
-      return 246.236;
-    } else if (size == 360) {
-      return 617.173;
-    } else if (size == 480) {
-      return 1118.095;
-    } else if (size == 720) {
-      return 2270.192;
+    for(VideoSize videoSize : availableVideoSize){
+      if(videoSize.getHeight() == size)
+        return (videoSize.getBps() / 1000.0);
     }
     return -1;
 
   }
 
-  private int widthToIdx(String str){
-    int width = Integer.parseInt(str);
-    switch(width){
-      case 144:
-        return 0;
-      case 240:
-        return 1;
-      case 360:
-        return 2;
-      case 480:
-        return 3;
-      case 720:
-        return 4;
-    }
-    return -1;
-  }
+
 
   private void writeLogToDevice(){
 //    if(wholeLogList.size() == 0) {
@@ -375,6 +284,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     //File newFolder = new File(folderPath);
     File newFile = null;
     File newBytesDataFile = null;
+    File newRequestDataFile = null;
 
     try {
 
@@ -383,74 +293,18 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       newFile.createNewFile();
       PrintWriter printWriter = new PrintWriter(newFile);
 
-      ArrayList<String> wholeLogList = readLogToDevice();
-
-      boolean flag = true;
-      String[] buffer = null;
-      ArrayList<ArrayList<LogData>> totalList = new ArrayList<ArrayList<LogData>>();
-      for(String line : wholeLogList){
-        String[] temp = line.split(",");
-        if(flag){
-          buffer = temp;
-          flag = false;
-        }
-        else{
-          ArrayList<LogData> logList = new ArrayList<LogData>();
-          if(temp.length != buffer.length){
-            Log.d("LLEEJ", "FileWriter :: could not occur");
-          }
-          for(int j = 0; j < temp.length; j++){
-            if(!buffer[j].contains("Count")){
-              logList.add(new LogData(buffer[j], temp[j]));
-            }
-          }
-          buffer = null;
-          totalList.add(logList);
-          flag = true;
-        }
-      }
+      ArrayList<ArrayList<LogData>> totalList = EventLogger.getLogDataList();
 
       String[][] forWrite = new String[1000][totalList.size() + 1];
       HashMap<Double, Double> map = new HashMap<Double, Double>();
 
-
-      ArrayList<Score> scores = new ArrayList<Score>();
-
-      int numTask = totalList.size();
-
-      for(ArrayList<LogData> subList : totalList) {
-        Score newScore = new Score();
-        LogData pre = null;
-        for (LogData data : subList) {
-          if (pre != null) {
-            newScore.numSwitching++;
-            newScore.magSwitching += Math.abs(widthToIdx(data.getLog()) - widthToIdx(pre.getLog()));
-            double diff = data.getTimeToDouble() - pre.getTimeToDouble();
-            newScore.avgBitrate += diff * SampleChooserActivity.convert(pre.getLog());
-          }
-          if (!map.containsKey(data.getTimeToDouble())) {
-            map.put(data.getTimeToDouble(), data.getTimeToDouble());
-            //Log.d("LLEEJ DEBUG", data.getTimeToDouble() + " , " + data.getLog());
-          }
-          pre = data;
+      for(ArrayList<LogData> subList: totalList){
+        for(LogData logData: subList){
+          if(!map.containsKey(logData.getTimeToDouble()))
+            map.put(logData.getTimeToDouble(),logData.getTimeToDouble());
         }
-        double diff2 = 136 - pre.getTimeToDouble();
-        newScore.avgBitrate += diff2 * SampleChooserActivity.convert(pre.getLog());
-        newScore.avgBitrate = newScore.avgBitrate / 136.0;
-
-        pre = null;
-        for(LogData data : subList){
-          if(pre != null){
-            double diff = data.getTimeToDouble() - pre.getTimeToDouble();
-            newScore.varBitrate += diff * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
-          }
-          pre = data;
-        }
-
-        newScore.varBitrate += diff2 * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
-        newScore.varBitrate = newScore.avgBitrate / 136.0;
-        scores.add(newScore);
       }
+
 
 
       ArrayList<Double> tempList = new ArrayList<Double>(map.values());
@@ -463,7 +317,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
         timestampList.add(tempList.get(x));
       }
 
-      timestampList.add(136.0);
+      timestampList.add((double)VIDEO_DURATION);
       Collections.sort(timestampList);
 
       for(int y = 0; y < timestampList.size(); y++){
@@ -524,108 +378,107 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
       String avgLine = "Avg.Bitrate,";
       String varLine = "Var.Bitrate,";
-      String numSwitchingLine = "NumSwitching,";
-      String magSwitchingLine = "MagSwitching,";
+      String numSwitchingLine = "Num.Switching,";
+      String magSwitchingLine = "Mag.Switching,";
+      String numRebufferingLine = "Num.Rebuffering,";
+      String durRebufferingLine = "Dur.Rebuffering,";
+
+      ArrayList<Score> scores = EventLogger.getScoreList();
 
       for(int i = 0; i < scores.size(); i++){
         avgLine += scores.get(i).avgBitrate + ",";
         varLine += scores.get(i).varBitrate + ",";
         numSwitchingLine += scores.get(i).numSwitching + ",";
         magSwitchingLine += scores.get(i).magSwitching + ",";
+        numRebufferingLine += scores.get(i).numRebuffering + ",";
+        durRebufferingLine += scores.get(i).durationRebuffering + ",";
       }
       avgLine = avgLine.substring(0, avgLine.length() - 1);
       varLine = varLine.substring(0, varLine.length() - 1);
       numSwitchingLine = numSwitchingLine.substring(0, numSwitchingLine.length() - 1);
       magSwitchingLine = magSwitchingLine.substring(0, magSwitchingLine.length() - 1);
+      numRebufferingLine = numRebufferingLine.substring(0, numRebufferingLine.length() - 1);
+      durRebufferingLine = durRebufferingLine.substring(0, durRebufferingLine.length() - 1);
 
       printWriter.println(avgLine);
       printWriter.println(varLine);
       printWriter.println(numSwitchingLine);
       printWriter.println(magSwitchingLine);
+      printWriter.println(numRebufferingLine);
+      printWriter.println(durRebufferingLine);
 
       printWriter.close();
 
       //Bytes Data
 
-      newBytesDataFile = new File(baseDir.getPath()+"/"+fileName+"_bytesData.csv");
-      newBytesDataFile.createNewFile();
-      PrintWriter bytesDataPrintWriter = new PrintWriter(newBytesDataFile);
+      if(Configure.LOGGING_BYTES_DATA) {
+        newBytesDataFile = new File(baseDir.getPath() + "/" + fileName + "_bytesData.csv");
+        newBytesDataFile.createNewFile();
+        PrintWriter bytesDataPrintWriter = new PrintWriter(newBytesDataFile);
 
-      ArrayList<String> wholeBytesDataList = readBytesDataToDevice();
+        //ArrayList<String> wholeBytesDataList = readBytesDataToDevice();
 
-      ArrayList<ArrayList<Bytes>> totalBytesDataList = new ArrayList<ArrayList<Bytes>>();
+        //ArrayList<ArrayList<Bytes>> totalBytesDataList = new ArrayList<ArrayList<Bytes>>();
+        ArrayList<ArrayList<Bytes>> totalBytesDataList = EventLogger.getBytesDataList();
 
-      boolean bytesDataFlag = true;
-      String[] bytesDataBuffer = null;
-
-      for(String line : wholeBytesDataList){
-        String[] temp = line.split(",");
-        if(bytesDataFlag){
-          bytesDataBuffer = temp;
-          bytesDataFlag = false;
+        String bytesDataFileHeader = "";
+        for (int i = 0; i < totalBytesDataList.size(); i++) {
+          bytesDataFileHeader += "Time(s),Bytes,";
         }
-        else{
-          ArrayList<Bytes> bytesDataList = new ArrayList<Bytes>();
-          if(temp.length != bytesDataBuffer.length){
-            Log.d("LLEEJ", "FileWriter :: could not occur");
+        bytesDataFileHeader = bytesDataFileHeader.substring(0, bytesDataFileHeader.length() - 1);
+        bytesDataPrintWriter.println(bytesDataFileHeader);
+
+        int cursor = 0;
+        int completed = 0;
+        while (completed != totalBytesDataList.size()) {
+          String line = "";
+          completed = 0;
+          for (int i = 0; i < totalBytesDataList.size(); i++) {
+            if (totalBytesDataList.get(i).size() <= cursor) {
+              line += ",,";
+              completed++;
+            } else {
+              Bytes bytes = totalBytesDataList.get(i).get(cursor);
+              line += bytes.getTimestamp() + "," + bytes.getBytes() + ",";
+            }
           }
-          for(int j = 0; j < temp.length; j++){
-              bytesDataList.add(new Bytes(bytesDataBuffer[j], temp[j]));
-          }
-          bytesDataBuffer = null;
-          totalBytesDataList.add(bytesDataList);
-          bytesDataFlag = true;
+          line = line.substring(0, line.length() - 1);
+          bytesDataPrintWriter.println(line);
+          cursor++;
         }
+
+        bytesDataPrintWriter.close();
       }
 
-      String bytesDataFileHeader = "";
-      for(int i = 0; i < totalBytesDataList.size() ; i++){
-        bytesDataFileHeader += "Time(s),Bytes,";
-      }
-      bytesDataFileHeader = bytesDataFileHeader.substring(0,bytesDataFileHeader.length()-1);
-      bytesDataPrintWriter.println(bytesDataFileHeader);
+      newRequestDataFile = new File(baseDir.getPath() + "/" + fileName + "_requestData.csv");
+      newRequestDataFile.createNewFile();
+      PrintWriter requestDataPrintWriter = new PrintWriter(newRequestDataFile);
+
+      ArrayList<ArrayList<Long>> totalRequestDataList = EventLogger.getRequestLists();
 
       int cursor = 0;
       int completed = 0;
-      while(completed != totalBytesDataList.size()){
+      HashMap<Integer,Integer> completedMap = new HashMap<Integer,Integer>();
+      while (completed != totalRequestDataList.size()) {
         String line = "";
-        completed = 0;
-        for(int i = 0 ; i < totalBytesDataList.size(); i++){
-          if(totalBytesDataList.get(i).size() <= cursor){
-            line += ",,";
-            completed++;
-          }
-          else{
-            Bytes bytes = totalBytesDataList.get(i).get(cursor);
-            line += bytes.getTimestamp() + "," + bytes.getBytes()+",";
+        for (int i = 0; i < totalRequestDataList.size(); i++) {
+          if (totalRequestDataList.get(i).size() <= cursor) {
+            line += ",";
+            if(!completedMap.containsKey(i)) {
+              completed++;
+              completedMap.put(i, i);
+            }
+          } else {
+            long stamp = totalRequestDataList.get(i).get(cursor);
+            line += stamp + ",";
           }
         }
-        line = line.substring(0, line.length()-1);
-        bytesDataPrintWriter.println(line);
+        line = line.substring(0, line.length() - 1);
+        requestDataPrintWriter.println(line);
         cursor++;
       }
-      bytesDataPrintWriter.close();
 
-
-
-      //ArrayList<LogData> timestampList = wholeLogList.get(0);
-
-//      String timestampLine="";
-//      for(LogData log : timestampList){
-//        timestampLine += log.getTimestamp() + ",";
-//      }
-//      timestampLine = timestampLine.substring(0, timestampLine.length() - 1);
-
-
-
-      //printWriter.println(timestampLine);
-
-      /*
-      for(String line : wholeLogList){
-        //line = line.substring(0,line.length() - 1);
-        printWriter.println(line);
-      }
-      */
+      requestDataPrintWriter.close();
       printWriter.close();
 
       updateStatusView("End write files...");
@@ -643,8 +496,8 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       try {
         Socket socket = new Socket("192.9.81.40", 9999);
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-        dos.writeUTF(fileName+".csv");
-        Log.d("LLEEJ", " Try to send" + fileName+".csv");
+        dos.writeUTF(fileName + ".csv");
+        Log.d("LLEEJ", " Try to send" + fileName + ".csv");
         dos.writeUTF(newFile.length() + "");
         Log.d("LLEEJ", "FileSize : " + newFile.length());
 
@@ -666,48 +519,79 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       } catch (IOException e) {
         e.printStackTrace();
       }
-    }
+      if (Configure.LOGGING_BYTES_DATA) {
+        try {
+          Socket socket = new Socket("192.9.81.40", 9999);
+          DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+          dos.writeUTF(fileName + "_bytesData.csv");
+          Log.d("LLEEJ", " Try to send" + fileName + "_bytesData.csv");
+          dos.writeUTF(newBytesDataFile.length() + "");
+          Log.d("LLEEJ", "FileSize : " + newBytesDataFile.length());
 
-    try {
-      Socket socket = new Socket("192.9.81.40", 9999);
-      DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-      dos.writeUTF(fileName+"_bytesData.csv");
-      Log.d("LLEEJ", " Try to send" + fileName + "_bytesData.csv");
-      dos.writeUTF(newBytesDataFile.length() + "");
-      Log.d("LLEEJ", "FileSize : " + newBytesDataFile.length());
+          InputStream fis = new FileInputStream(newBytesDataFile);
+          BufferedInputStream bis = new BufferedInputStream(fis);
 
-      InputStream fis = new FileInputStream(newBytesDataFile);
-      BufferedInputStream bis = new BufferedInputStream(fis);
+          Log.d("LLEEJ", "Sending...");
 
-      Log.d("LLEEJ", "Sending...");
+          byte[] buff = new byte[4096];
+          int len = 0;
+          while ((len = bis.read(buff)) > 0) {
+            dos.write(buff, 0, len);
+          }
 
-      byte[] buff = new byte[4096];
-      int len = 0;
-      while ((len = bis.read(buff)) > 0) {
-        dos.write(buff, 0, len);
+          dos.flush();
+          dos.close();
+          bis.close();
+          fis.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
       }
+      try {
+        Socket socket = new Socket("192.9.81.40", 9999);
+        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        dos.writeUTF(fileName + "_requestData.csv");
+        Log.d("LLEEJ", " Try to send" + fileName + "_requestData.csv");
+        dos.writeUTF(newRequestDataFile.length() + "");
+        Log.d("LLEEJ", "FileSize : " + newRequestDataFile.length());
 
-      dos.flush();
-      dos.close();
-      bis.close();
-      fis.close();
-    } catch (IOException e) {
-      e.printStackTrace();
+        InputStream fis = new FileInputStream(newRequestDataFile);
+        BufferedInputStream bis = new BufferedInputStream(fis);
+
+        Log.d("LLEEJ", "Sending...");
+
+        byte[] buff = new byte[4096];
+        int len = 0;
+        while ((len = bis.read(buff)) > 0) {
+          dos.write(buff, 0, len);
+        }
+
+        dos.flush();
+        dos.close();
+        bis.close();
+        fis.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
+
+
 
 
     updateStatusView("Success Testing");
     startButton.setEnabled(true);
+    EventLogger.init();
 
   }
 
   private void handleAfterTesting(ArrayList<LogData> logList) {
     updateStatusView(confirmedCount - remainedCount + " testing is ended.");
+    Log.d("LLEEJ", confirmedCount - remainedCount + " testing is ended.");
     //wholeLogList.add(logList);
     if(remainedCount == 0) {
       writeLogToDevice();
-      confirmedCount = 0;
-      tagText = "";
+        confirmedCount = 0;
+        tagText = "";
     }
     else
       executeTest();
@@ -735,7 +619,6 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       ArrayList<LogData> logList = (ArrayList<LogData>) data.getSerializableExtra("log");
       handleAfterTesting(logList);
     }
-
   }
 
   private void executeTest(){
@@ -745,18 +628,29 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     Log.d("LLEEJ", "remainedCount : " + remainedCount);
     Log.d("LLEEJ", confirmedCount- remainedCount +" TEST start");
 
-    selectedMode = s.getSelectedItemPosition();
+
 
     Sample sample;
     switch(selectedMode){
       case SampleChooserActivity.MODE_DASH:
-      case SampleChooserActivity.MODE_DASH_TEST1:
-      case SampleChooserActivity.MODE_DASH_FIXED:
       case SampleChooserActivity.MODE_BBA:
-        //sample = Samples.WIDEVINE_HDCP[0];
+        sample = Samples.YOUTUBE_DASH_MP4[4];
+        break;
+      case SampleChooserActivity.MODE_DASH_RB_2S:
+      case SampleChooserActivity.MODE_BBA_RB_2S:
         sample = Samples.YOUTUBE_DASH_MP4[0];
-        //sample = Samples.MISC[4];
-        //sample = Samples.WIDEVINE_H264_MP4_CLEAR[0];
+        break;
+      case SampleChooserActivity.MODE_DASH_RB_4S:
+      case SampleChooserActivity.MODE_BBA_RB_4S:
+        sample = Samples.YOUTUBE_DASH_MP4[1];
+        break;
+      case SampleChooserActivity.MODE_DASH_RB_10S:
+      case SampleChooserActivity.MODE_BBA_RB_10S:
+        sample = Samples.YOUTUBE_DASH_MP4[2];
+        break;
+      case SampleChooserActivity.MODE_DASH_RB_15S:
+      case SampleChooserActivity.MODE_BBA_RB_15S:
+        sample = Samples.YOUTUBE_DASH_MP4[3];
         break;
       case SampleChooserActivity.MODE_HLS:
         sample = Samples.HLS[5];
@@ -793,9 +687,11 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     remainedCount = confirmedCount;
 
     tagText = tagEdit.getText().toString();
+    VIDEO_DURATION = Integer.parseInt(durationEdit.getText().toString());
 
 
     Log.d("LLEEJ","Test " + confirmedCount);
+    selectedMode = s.getSelectedItemPosition();
     executeTest();
   }
 

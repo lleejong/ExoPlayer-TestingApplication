@@ -22,6 +22,7 @@ import com.google.android.exoplayer.dash.mpd.Period;
 import com.google.android.exoplayer.util.Util;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.IOException;
 
@@ -78,11 +79,18 @@ public final class DefaultDashTrackSelector implements DashTrackSelector {
       if (adaptationSet.type == adaptationSetType) {
         if (adaptationSetType == AdaptationSet.TYPE_VIDEO) {
           int[] representations;
-          if (filterVideoRepresentations) {
+          //LLEEJ: filter 수정
+          if (!filterVideoRepresentations) {
+
+            Log.d("LLEEJ, MPD","AAAA");
+            for(int j = 0; j < adaptationSet.representations.size(); j++){
+              Log.d("LLEEJ, MPD","BBBB" + adaptationSet.representations.get(j).format.width);
+            }
             representations = VideoFormatSelectorUtil.selectVideoFormatsForDefaultDisplay(
                 context, adaptationSet.representations, null,
                 filterProtectedHdContent && adaptationSet.hasContentProtection());
           } else {
+            Log.d("LLEEJ, MPD","BBBB");
             representations = Util.firstIntegersArray(adaptationSet.representations.size());
           }
           int representationCount = representations.length;

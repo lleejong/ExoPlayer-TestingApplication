@@ -90,6 +90,7 @@ public class DashChunkSource implements ChunkSource, Output {
      */
     public void onAvailableRangeChanged(int sourceId, TimeRange availableRange);
 
+
   }
 
   /**
@@ -491,7 +492,7 @@ public class DashChunkSource implements ChunkSource, Output {
           periodHolder.localIndex, evaluation.trigger);
       lastChunkWasInitialization = true;
       out.chunk = initializationChunk;
-      Log.d("INTERGET DEBUG","AA"+ pendingInitializationUri.toString());
+      //Log.d("INTERGET DEBUG","AA"+ pendingInitializationUri.toString());
       return;
     }
 
@@ -502,7 +503,7 @@ public class DashChunkSource implements ChunkSource, Output {
         mediaFormat, enabledTrack, segmentNum, evaluation.trigger);
     lastChunkWasInitialization = false;
     out.chunk = nextMediaChunk;
-    Log.d("INTERGET DEBUG","BB"+ segmentNum);
+    //Log.d("INTERGET DEBUG","BB"+ segmentNum);
   }
 
   @Override
@@ -707,7 +708,7 @@ public class DashChunkSource implements ChunkSource, Output {
     Format format = representation.format;
     long startTimeUs = representationHolder.getSegmentStartTimeUs(segmentNum);
     long endTimeUs = representationHolder.getSegmentEndTimeUs(segmentNum);
-    Log.d("SEGMENT DEBUG , DashChunkSource.newMediaChunk()", (endTimeUs - startTimeUs) + "");
+    Log.d("SEGMENT DEBUG","DashChunkSource.newMediaChunk(): "+ (endTimeUs - startTimeUs));
     RangedUri segmentUri = representationHolder.getSegmentUrl(segmentNum);
     DataSpec dataSpec = new DataSpec(segmentUri.getUri(), segmentUri.start, segmentUri.length,
         representation.getCacheKey());

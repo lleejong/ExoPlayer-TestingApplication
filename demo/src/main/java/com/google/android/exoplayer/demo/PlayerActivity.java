@@ -26,6 +26,8 @@ import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
 import com.google.android.exoplayer.demo.Log.BandwidthLogData;
 import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.Log.LogData;
+import com.google.android.exoplayer.demo.Log.Score;
+import com.google.android.exoplayer.demo.Log.VideoSize;
 import com.google.android.exoplayer.demo.player.DashRendererBuilder;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.demo.player.DemoPlayer.RendererBuilder;
@@ -122,7 +124,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     TIME_FORMAT.setMaximumFractionDigits(2);
   }
 
-  private EventLogger eventLogger;
+  private static EventLogger eventLogger;
   private MediaController mediaController;
   private View debugRootView;
   private View shutterView;
@@ -313,45 +315,6 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     player.setBackgrounded(backgrounded);
   }
 
-  // Permission request listener method
-
-//  @Override
-//  public void onRequestPermissionsResult(int requestCode, String[] permissions,
-//      int[] grantResults) {
-//    if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//      preparePlayer(true);
-//    } else {
-//      Toast.makeText(getApplicationContext(), R.string.storage_permission_denied,
-//          Toast.LENGTH_LONG).show();
-//      finish();
-//    }
-//  }
-
-  // Permission management methods
-
-  /**
-   * Checks whether it is necessary to ask for permission to read storage. If necessary, it also
-   * requests permission.
-   *
-   * @return true if a permission request is made. False if it is not necessary.
-   */
-//  @TargetApi(23)
-//  private boolean maybeRequestPermission() {
-//    if (requiresPermission(contentUri)) {
-//      requestPermissions(new String[] {permission.READ_EXTERNAL_STORAGE}, 0);
-//      return true;
-//    } else {
-//      return false;
-//    }
-//  }
-
-//  @TargetApi(23)
-//  private boolean requiresPermission(Uri uri) {
-//    return Util.SDK_INT >= 23
-//        && Util.isLocalFileUri(uri)
-//        && checkSelfPermission(permission.READ_EXTERNAL_STORAGE)
-//            != PackageManager.PERMISSION_GRANTED;
-//  }
 
   // Internal methods
 
@@ -379,9 +342,15 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
     switch(selectedMode){
       case SampleChooserActivity.MODE_DASH:
-      case SampleChooserActivity.MODE_DASH_FIXED:
-      case SampleChooserActivity.MODE_DASH_TEST1:
       case SampleChooserActivity.MODE_BBA:
+      case SampleChooserActivity.MODE_DASH_RB_2S:
+      case SampleChooserActivity.MODE_BBA_RB_2S:
+      case SampleChooserActivity.MODE_DASH_RB_4S:
+      case SampleChooserActivity.MODE_BBA_RB_4S:
+      case SampleChooserActivity.MODE_DASH_RB_10S:
+      case SampleChooserActivity.MODE_BBA_RB_10S:
+      case SampleChooserActivity.MODE_DASH_RB_15S:
+      case SampleChooserActivity.MODE_BBA_RB_15S:
         return new DashRendererBuilder(this, userAgent, contentUri.toString(),
                 new WidevineTestMediaDrmCallback(contentId, provider), selectedMode);
 
@@ -451,7 +420,65 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
   }
 
   // DemoPlayer.Listener implementation
+  private int heightToIdx(String str){
+    ArrayList<VideoSize> availableVideoSize = EventLogger.getAvailableVideoSize();
 
+    int height = Integer.parseInt(str);
+    for(int i = 0; i < availableVideoSize.size(); i++){
+      VideoSize videoSize = availableVideoSize.get(i);
+      if(videoSize.getHeight() == height)
+        return i;
+    }
+    return -1;
+  }
+  private void doFinalLogging(){
+    Log.d("LLEEJ1", "PlayerActivity,doFinalLogging() : " + logList.size());
+    eventLogger.updateNewLogDataList(logList);
+
+
+    if(Configure.LOGGING_BYTES_DATA)
+      eventLogger.updateNewBytesDataList();
+
+    eventLogger.updateNewRequestList();
+
+    Score newScore = new Score();
+    newScore.numRebuffering = eventLogger.getRebufferingCount();
+    newScore.durationRebuffering = eventLogger.getDurationRebuffering();
+
+
+    LogData pre = null;
+    for(LogData data : logList){
+      newScore.numSwitching++;
+      if(pre != null){
+        newScore.magSwitching += Math.abs(heightToIdx(data.getLog()) - heightToIdx(pre.getLog()));
+        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
+        newScore.avgBitrate += diff * SampleChooserActivity.convert(pre.getLog());
+      }
+      pre = data;
+    }
+    double diff2 = SampleChooserActivity.VIDEO_DURATION - pre.getTimeToDouble();
+    newScore.avgBitrate += diff2 * SampleChooserActivity.convert(pre.getLog());
+    newScore.avgBitrate += logList.get(0).getTimeToDouble() * SampleChooserActivity.convert(logList.get(0).getLog());
+
+    newScore.avgBitrate = newScore.avgBitrate / (double) SampleChooserActivity.VIDEO_DURATION;
+
+    pre = null;
+    for(LogData data : logList){
+      if(pre != null){
+        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
+        newScore.varBitrate += diff * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
+      }
+      pre = data;
+    }
+
+    newScore.varBitrate += diff2 * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
+    newScore.varBitrate += (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate);
+    newScore.varBitrate = newScore.varBitrate /(double) SampleChooserActivity.VIDEO_DURATION;
+    newScore.varBitrate = Math.sqrt(newScore.varBitrate);
+
+    eventLogger.updateNewScore(newScore);
+  }
+  /*
   private void writeFileToDevice(){
     //SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
     //String fileName = dateFormat.format(new Date()).toString();
@@ -463,6 +490,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
 
     File baseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpByLLEEJ");
+
     File bytesDataBaseDir = new File(Environment.getExternalStorageDirectory() + "/DASH_LOG/tmpBytesData");
 
     if(!baseDir.exists())
@@ -546,13 +574,15 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       e.printStackTrace();
     }
   }
+  */
 
   public void onEndState(){
     Log.d("LLEEJ", "END STATE");
     Intent intent = new Intent();
     intent.putExtra("success", true);
     setResult(0, intent);
-    writeFileToDevice();
+    //writeFileToDevice();
+    doFinalLogging();
     logList = null;
     Log.d("LLEEJ","END STATE");
     finish();

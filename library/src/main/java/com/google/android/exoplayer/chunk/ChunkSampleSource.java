@@ -46,7 +46,9 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
   /**
    * Interface definition for a callback to be notified of {@link ChunkSampleSource} events.
    */
-  public interface EventListener extends BaseChunkSampleSourceEventListener {}
+  public interface EventListener extends BaseChunkSampleSourceEventListener {
+    public void onGetRequestPatched(long elapsedMs);
+  }
 
   /**
    * The default minimum number of times to retry loading data prior to failing.
@@ -539,6 +541,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
     }
     //LLEEJ: Inter-GET
     currentLoadStartTimeMs = SystemClock.elapsedRealtime();
+    notifyGetRequestPatched(currentLoadStartTimeMs);
     if (isMediaChunk(currentLoadable)) {
       BaseMediaChunk mediaChunk = (BaseMediaChunk) currentLoadable;
       mediaChunk.init(sampleQueue);
@@ -547,11 +550,12 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
         pendingResetPositionUs = NO_RESET_PENDING;
       }
       notifyLoadStarted(mediaChunk.dataSpec.length, mediaChunk.type, mediaChunk.trigger,
-          mediaChunk.format, mediaChunk.startTimeUs, mediaChunk.endTimeUs);
+              mediaChunk.format, mediaChunk.startTimeUs, mediaChunk.endTimeUs);
     } else {
       notifyLoadStarted(currentLoadable.dataSpec.length, currentLoadable.type,
-          currentLoadable.trigger, currentLoadable.format, -1, -1);
+              currentLoadable.trigger, currentLoadable.format, -1, -1);
     }
+
     loader.startLoading(currentLoadable, this);
   }
 
@@ -630,7 +634,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
         @Override
         public void run() {
           eventListener.onLoadCompleted(eventSourceId, bytesLoaded, type, trigger, format,
-              usToMs(mediaStartTimeUs), usToMs(mediaEndTimeUs), elapsedRealtimeMs, loadDurationMs);
+                  usToMs(mediaStartTimeUs), usToMs(mediaEndTimeUs), elapsedRealtimeMs, loadDurationMs);
         }
       });
     }
@@ -664,7 +668,7 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
         @Override
         public void run() {
           eventListener.onUpstreamDiscarded(eventSourceId, usToMs(mediaStartTimeUs),
-              usToMs(mediaEndTimeUs));
+                  usToMs(mediaEndTimeUs));
         }
       });
     }
@@ -677,10 +681,21 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
         @Override
         public void run() {
           eventListener.onDownstreamFormatChanged(eventSourceId, format, trigger,
-              usToMs(positionUs));
+                  usToMs(positionUs));
         }
       });
     }
   }
+  private void notifyGetRequestPatched(final long elapsedMs) {
+    if (eventHandler != null && eventListener != null) {
+      eventHandler.post(new Runnable()  {
+        @Override
+        public void run() {
+          eventListener.onGetRequestPatched(elapsedMs);
+        }
+      });
+    }
+  }
+
 
 }

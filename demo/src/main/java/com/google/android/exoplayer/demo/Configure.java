@@ -13,5 +13,6 @@ public class Configure {
     public static double BT_COMPENSATION_PARAMETER = 1.0;
 
     public static boolean LOGGING_SERVER = true;
+    public static boolean LOGGING_BYTES_DATA= false;
 
 }

@@ -6,8 +6,10 @@ import com.google.android.exoplayer.chunk.Chunk;
 import com.google.android.exoplayer.chunk.Format;
 import com.google.android.exoplayer.chunk.FormatEvaluator;
 import com.google.android.exoplayer.chunk.MediaChunk;
+import com.google.android.exoplayer.demo.Log.VideoSize;
 import com.google.android.exoplayer.upstream.BandwidthMeter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -97,13 +99,14 @@ public class LLEEJFormatEvaluator {
                     : queue.get(queue.size() - 1).endTimeUs - playbackPositionUs;
             Format current = evaluation.format;
             Format ideal = determineIdealFormat(formats, bandwidthMeter.getBitrateEstimate());
-            if(isInit) {
+
+            if(!EventLogger.isInitiatedVideoSize()) {
                 for (int i = 0; i < formats.length; i++){
+                    EventLogger.addNewVideoSize(new VideoSize(formats[i].width, formats[i].height, formats[i].bitrate));
                     Log.d("LLEEJ","AVAILABLE FORMAT : " + formats[i].width +"x" + formats[i].height + " , " + formats[i].bitrate);
                 }
-
-                isInit = false;
             }
+
 
             boolean isHigher = ideal != null && current != null && ideal.bitrate > current.bitrate; // ideal
             boolean isLower = ideal != null && current != null && ideal.bitrate < current.bitrate;
@@ -459,7 +462,7 @@ public class LLEEJFormatEvaluator {
     public static class BufferBasedAdaptiveEvaluator implements FormatEvaluator {
 
         public static final int DEFAULT_BUFFER_DURATION_MS = 30000;
-        public static final int DEFAULT_RESERVOIR_DURATION_MS = 100000;
+        public static final int DEFAULT_RESERVOIR_DURATION_MS = 10000;
 
         public enum BufferState {
             STARTUP_STATE, STEADY_STATE
@@ -482,6 +485,7 @@ public class LLEEJFormatEvaluator {
         private final EventListener eventListener;
         private HashMap<Long, Long> chunksByte;
         private boolean allChunksLoaded;
+        private boolean isInit = true;
 
 
         public interface EventListener {
@@ -530,6 +534,12 @@ public class LLEEJFormatEvaluator {
                     : queue.get(queue.size() - 1).endTimeUs - playbackPositionUs;
             notifyBufferLoadChanged(bufferedDurationUs / 1000);
 
+            if(!EventLogger.isInitiatedVideoSize()) {
+                for (int i = 0; i < formats.length; i++){
+                    EventLogger.addNewVideoSize(new VideoSize(formats[i].width,formats[i].height, formats[i].bitrate));
+                    Log.d("LLEEJ","AVAILABLE FORMAT : " + formats[i].width +"x" + formats[i].height + " , " + formats[i].bitrate);
+                }
+            }
             for(int i=0;i<queue.size();i++){
 //            Log.e("ashkan_video", "\t"+i+": "+queue.get(i).format.bitrate+" "+queue.get(i).startTimeUs/1000+" : "+queue.get(i).endTimeUs/1000+" "+queue.get(i).isLoadFinished());
 
@@ -589,10 +599,7 @@ public class LLEEJFormatEvaluator {
                 ideal = determineBufferBasedIdealFormat(formats, current, bufferedDurationUs);
             }
 
-            if (current != null && ideal != current) {
-                evaluation.trigger = FormatEvaluator.TRIGGER_ADAPTIVE;
-                Log.e("ashkan_video", current.bitrate+"->"+ideal.bitrate);
-            }
+
             evaluation.format = ideal;
 
         }
@@ -628,9 +635,9 @@ public class LLEEJFormatEvaluator {
 
         //this is the f function, it converts the buffer occupancy to formats indexes (linear function). formats array is sorted from high bitrate to low bitrate
         protected int bufferOccupancyToFormatIndex(int formatsLen, long bufferedDurationUs){
-            if(bufferedDurationUs<DEFAULT_RESERVOIR_DURATION_MS*1000){
+            if(bufferedDurationUs < DEFAULT_RESERVOIR_DURATION_MS * 1000){
                 return formatsLen - 1;
-            }else if(bufferedDurationUs>(DEFAULT_BUFFER_DURATION_MS*0.9*1000)){
+            }else if(bufferedDurationUs > (DEFAULT_BUFFER_DURATION_MS*0.9*1000) ){
                 return 0;
             }else{
                 float bufferDurationIntervalUs=((DEFAULT_BUFFER_DURATION_MS-DEFAULT_RESERVOIR_DURATION_MS)/(formatsLen-1))*1000;

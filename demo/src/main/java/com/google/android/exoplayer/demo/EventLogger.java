@@ -22,6 +22,9 @@ import com.google.android.exoplayer.audio.AudioTrack;
 import com.google.android.exoplayer.chunk.Format;
 import com.google.android.exoplayer.demo.Log.BandwidthLogData;
 import com.google.android.exoplayer.demo.Log.Bytes;
+import com.google.android.exoplayer.demo.Log.LogData;
+import com.google.android.exoplayer.demo.Log.Score;
+import com.google.android.exoplayer.demo.Log.VideoSize;
 import com.google.android.exoplayer.demo.player.DemoPlayer;
 import com.google.android.exoplayer.util.VerboseLogUtil;
 
@@ -47,6 +50,11 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     TIME_FORMAT.setMinimumFractionDigits(2);
     TIME_FORMAT.setMaximumFractionDigits(2);
   }
+  private static ArrayList<ArrayList<LogData>> logDataList = new ArrayList<ArrayList<LogData>>();
+  private static ArrayList<Score> scoreList = new ArrayList<Score>();
+  private static ArrayList<ArrayList<Bytes>> bytesDataList = new ArrayList<ArrayList<Bytes>>();
+  private static ArrayList<VideoSize> availableVideoSize = null;
+  private static ArrayList<ArrayList<Long>> requestLists = new ArrayList<ArrayList<Long>>();
 
   private long sessionStartTimeMs;
   private long[] loadStartTimeMs;
@@ -54,9 +62,13 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
 
   private int droppedFrameCount = 0;
   private int rebufferingCount = 0;
-  private ArrayList<BandwidthLogData> bandwidthLogDataList;
+  private long durationRebuffering = 0;
+  private long localDurationRebuffering = 0;
+  private long rebufferingStartTimeMs;
+  private boolean rebufferingFlag = false;
 
   private ArrayList<Bytes> bytesArrayList = new ArrayList<Bytes>();
+  private ArrayList<Long> requestList = new ArrayList<Long>();
 
   double preDataTime = 0;
   long bytesAccumulates = 0;
@@ -69,10 +81,55 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     loadStartTimeMs = new long[DemoPlayer.RENDERER_COUNT];
   }
 
+  public static void init(){
+    logDataList = new ArrayList<ArrayList<LogData>>();
+    scoreList = new ArrayList<Score>();
+    if(Configure.LOGGING_BYTES_DATA)
+      bytesDataList = new ArrayList<ArrayList<Bytes>>();
+    availableVideoSize = null;
+    requestLists = new ArrayList<ArrayList<Long>>();
+  }
+  public static boolean isInitiatedVideoSize(){
+    if(availableVideoSize == null)
+      return false;
+    else
+      return true;
+  }
+
+
+  public static void addNewVideoSize(VideoSize videoSize){
+    if(availableVideoSize == null)
+      availableVideoSize = new ArrayList<VideoSize>();
+
+    availableVideoSize.add(videoSize);
+    String str = "";
+    for(VideoSize size : availableVideoSize){
+      str += size.getHeight() + " , ";
+    }
+  }
+
+  public static ArrayList<VideoSize> getAvailableVideoSize(){
+    return availableVideoSize;
+  }
+
+  public void updateNewScore(Score score){
+    scoreList.add(score);
+  }
+  public void updateNewBytesDataList(){
+    checkAdditionalBytesData();
+    bytesDataList.add(bytesArrayList);
+  }
+  public void updateNewLogDataList(ArrayList<LogData> newLogData){
+    Log.d("LLEEJ1","EventLogger,updateNewLogData() : " + newLogData.size());
+    logDataList.add(newLogData);
+    Log.d("LLEEJ1", "EventLogger,updateNewLogData() : " + logDataList.get(logDataList.size()-1).size());
+  }
+
+  public void updateNewRequestList(){
+    requestLists.add(requestList);
+  }
   public void startSession() {
     sessionStartTimeMs = SystemClock.elapsedRealtime();
-    if(Configure.BANDWIDTH_ESTIMATE_DEBUG)
-      bandwidthLogDataList = new ArrayList<BandwidthLogData>();
     Log.d(TAG, "start [0]");
   }
 
@@ -107,7 +164,6 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   @Override
   public void onBandwidthSample(int elapsedMs, long bytes, long bitrateEstimate, float bitsPerSecond) {
     if(Configure.BANDWIDTH_ESTIMATE_DEBUG)
-      bandwidthLogDataList.add(new BandwidthLogData(getSessionTimeString()+"", bytes+"", bitrateEstimate+"", bitsPerSecond+""));
     Log.d(TAG, "bandwidth [" + getSessionTimeString() + ", " + bytes + ", "
             + getTimeString(elapsedMs) + ", " + bitrateEstimate + ", " + bitsPerSecond + "]");
   }
@@ -221,6 +277,13 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     Log.d("onBufferLoadChanged", "onBufferLoadChanged : " + bufferDurationMs);
   }
 
+  //LLEEJ: InterGET
+  @Override
+  public void onGetRequestPatched(long elapsedMs){
+    long realTimeMs = elapsedMs - sessionStartTimeMs;
+    requestList.add(realTimeMs);
+  }
+
   private void printInternalError(String type, Exception e) {
     Log.e(TAG, "internalError [" + getSessionTimeString() + ", " + type + "]", e);
   }
@@ -228,17 +291,31 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   private String getStateString(int state) {
     switch (state) {
       case ExoPlayer.STATE_BUFFERING:
+        Log.d("LLEEJ_STATE","B");
         rebufferingCount++;
+        rebufferingStartTimeMs = SystemClock.elapsedRealtime();
+        rebufferingFlag = true;
         return "B";
       case ExoPlayer.STATE_ENDED:
+        Log.d("LLEEJ_STATE","E");
         return "E";
       case ExoPlayer.STATE_IDLE:
+        Log.d("LLEEJ_STATE","I");
         return "I";
       case ExoPlayer.STATE_PREPARING:
+        Log.d("LLEEJ_STATE","P");
         return "P";
       case ExoPlayer.STATE_READY:
+        Log.d("LLEEJ_STATE","R");
+        if(rebufferingFlag) {
+          rebufferingFlag = false;
+          localDurationRebuffering = SystemClock.elapsedRealtime() - rebufferingStartTimeMs;
+          durationRebuffering += localDurationRebuffering;
+          Log.d("LLEEJ, buffering", durationRebuffering + " ");
+        }
         return "R";
       default:
+        Log.d("LLEEJ_STATE","?");
         return "?";
     }
   }
@@ -259,23 +336,19 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     return rebufferingCount;
   }
 
-  public ArrayList<BandwidthLogData> getBandwidthLogDataList(){
-    return bandwidthLogDataList;
-  }
 
   @Override
   public void onBytesTransferred(int elapsedMs, long bytes) {
-    double time = Double.parseDouble(getSessionTimeString());
-    if(preDataTime == time){
-      bytesAccumulates += bytes;
+    if(Configure.LOGGING_BYTES_DATA) {
+      double time = Double.parseDouble(getSessionTimeString());
+      if (preDataTime == time) {
+        bytesAccumulates += bytes;
+      } else {
+        bytesArrayList.add(new Bytes(preDataTime + "", bytesAccumulates + ""));
+        preDataTime = time;
+        bytesAccumulates = 0;
+      }
     }
-    else{
-      //Log.d("LLEEJ BYTE DEBUG", preDataTime + " , " + bytesAccumulates);
-      bytesArrayList.add(new Bytes(preDataTime + "", bytesAccumulates + ""));
-      preDataTime = time;
-      bytesAccumulates = 0;
-    }
-
   }
 
   private void checkAdditionalBytesData(){
@@ -289,5 +362,20 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   public ArrayList<Bytes> getBytesArrayList(){
     checkAdditionalBytesData();
     return bytesArrayList;
+  }
+  public double getDurationRebuffering(){
+    return durationRebuffering;
+  }
+  public static ArrayList<ArrayList<LogData>> getLogDataList(){
+    return logDataList;
+  }
+  public static ArrayList<ArrayList<Bytes>> getBytesDataList(){
+    return bytesDataList;
+  }
+  public static ArrayList<Score> getScoreList() {
+    return scoreList;
+  }
+  public static ArrayList<ArrayList<Long>> getRequestLists(){
+    return requestLists;
   }
 }

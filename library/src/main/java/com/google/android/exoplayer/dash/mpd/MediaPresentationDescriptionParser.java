@@ -258,6 +258,7 @@ public class MediaPresentationDescriptionParser extends DefaultHandler
         Representation representation = parseRepresentation(xpp, baseUrl, mimeType, codecs, width,
             height, frameRate, audioChannels, audioSamplingRate, language, segmentBase,
             contentProtectionsBuilder);
+        Log.d("LLEEJ, MPD","MPDParser parseAdaptationSet() : " + representation.getFormat().width +","+representation.getFormat().height);
         contentProtectionsBuilder.endRepresentation();
         contentType = checkContentTypeConsistency(contentType, getContentType(representation));
         representations.add(representation);

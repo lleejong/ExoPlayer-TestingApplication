@@ -8,11 +8,15 @@ public class Score {
     public int magSwitching;
     public double avgBitrate;
     public double varBitrate;
+    public int numRebuffering;
+    public double durationRebuffering;
 
     public Score(){
         numSwitching = 0;
         magSwitching = 0;
         avgBitrate = 0;
         varBitrate = 0;
+        numRebuffering = 0;
+        durationRebuffering = 0;
     }
 }

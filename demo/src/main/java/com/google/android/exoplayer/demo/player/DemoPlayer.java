@@ -64,6 +64,13 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     StreamingDrmSessionManager.EventListener, DashChunkSource.EventListener, TextRenderer,
     MetadataRenderer<List<Id3Frame>>, DebugTextViewHelper.Provider, LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator.EventListener{
 
+  @Override
+  public void onGetRequestPatched(long elapsedMs) {
+    if (infoListener != null) {
+      infoListener.onGetRequestPatched(elapsedMs);
+    }
+  }
+
   /**
    * Builds renderers for the player.
    */
@@ -140,6 +147,7 @@ public class DemoPlayer implements ExoPlayer.Listener, ChunkSampleSource.EventLi
     void onAllChunksDownloaded(long totalBytes);
     void onBufferLoadChanged(long bufferDurationMs);
     void onBytesTransferred(int elpasedMs, long bytes);
+    void onGetRequestPatched(long elapsedMs);
   }
 
   /**
