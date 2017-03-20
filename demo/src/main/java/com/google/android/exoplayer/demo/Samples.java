@@ -48,11 +48,11 @@ import java.util.Locale;
 
   public static final Sample[] YOUTUBE_DASH_MP4 = new Sample[] {
           new Sample("Redbull 2s","http://192.9.81.155/dash/redbull_2sec_URL-Template.mpd",Util.TYPE_DASH),
-          //new Sample("Redbull 2s","http://emmy9.casa.umass.edu/ddash/pub/datasets/mmsys13/redbull_2sec_URL-Template.mpd",Util.TYPE_DASH),
-          new Sample("Redbull 4s","http://emmy9.casa.umass.edu/ddash/pub/datasets/mmsys13/redbull_4sec_URL-Template.mpd",Util.TYPE_DASH),
+          new Sample("Redbull 4s", "http://192.9.81.155/dash/redbull_4sec_URL-Template.mpd",Util.TYPE_DASH),
+          new Sample("Redbull 6s", "http://192.9.81.155/dash/redbull_6sec_URL-Template.mpd",Util.TYPE_DASH),
           new Sample("Redbull 10s","http://192.9.81.155/dash/redbull_10sec_URL-Template.mpd",Util.TYPE_DASH),
-          //new Sample("Redbull 10s","http://emmy9.casa.umass.edu/ddash/pub/datasets/mmsys13/redbull_10sec_URL-Template.mpd",Util.TYPE_DASH),
-          new Sample("Redbull 15s","http://emmy9.casa.umass.edu/ddash/pub/datasets/mmsys13/redbull_15sec_URL-Tempalte.mpd",Util.TYPE_DASH),
+          new Sample("Redbull 15s","http://192.9.81.155/dash/redbull_15sec_URL-Template.mpd",Util.TYPE_DASH),
+          //new Sample("Redbull 15s","http://emmy9.casa.umass.edu/ddash/pub/datasets/mmsys13/redbull_15sec_URL-Tempalte.mpd",Util.TYPE_DASH),
           new Sample("Google Glass (MP4,H264)",
         "http://www.youtube.com/api/manifest/dash/id/bf5bb2419360daf1/source/youtube?"
         + "as=fmp4_audio_clear,fmp4_sd_hd_clear&sparams=ip,ipbits,expire,source,id,as&ip=0.0.0.0&"

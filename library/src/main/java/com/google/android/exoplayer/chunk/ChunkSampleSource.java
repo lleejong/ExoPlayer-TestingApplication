@@ -19,6 +19,7 @@ import com.google.android.exoplayer.C;
 import com.google.android.exoplayer.LoadControl;
 import com.google.android.exoplayer.MediaFormat;
 import com.google.android.exoplayer.MediaFormatHolder;
+import com.google.android.exoplayer.NewLogger;
 import com.google.android.exoplayer.SampleHolder;
 import com.google.android.exoplayer.SampleSource;
 import com.google.android.exoplayer.SampleSource.SampleSourceReader;
@@ -355,6 +356,8 @@ public class ChunkSampleSource implements SampleSource, SampleSourceReader, Load
     chunkSource.onChunkLoadCompleted(currentLoadable);
     if (isMediaChunk(currentLoadable)) {
       BaseMediaChunk mediaChunk = (BaseMediaChunk) currentLoadable;
+      Log.d("Playback", "----" + mediaChunk.chunkIndex + " , " + loadDurationMs);
+        //NewLogger.updateLoadDuration(mediaChunk.chunkIndex, loadDurationMs);
       notifyLoadCompleted(currentLoadable.bytesLoaded(), mediaChunk.type, mediaChunk.trigger,
           mediaChunk.format, mediaChunk.startTimeUs, mediaChunk.endTimeUs, now, loadDurationMs);
     } else {

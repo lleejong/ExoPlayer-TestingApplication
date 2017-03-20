@@ -15,8 +15,11 @@
  */
 package com.google.android.exoplayer.demo;
 
+import com.google.android.exoplayer.ByteLog;
 import com.google.android.exoplayer.ExoPlayer;
 import com.google.android.exoplayer.MediaCodecTrackRenderer.DecoderInitializationException;
+import com.google.android.exoplayer.NewLogger;
+import com.google.android.exoplayer.SegmentLog;
 import com.google.android.exoplayer.TimeRange;
 import com.google.android.exoplayer.audio.AudioTrack;
 import com.google.android.exoplayer.chunk.Format;
@@ -50,11 +53,12 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     TIME_FORMAT.setMinimumFractionDigits(2);
     TIME_FORMAT.setMaximumFractionDigits(2);
   }
-  private static ArrayList<ArrayList<LogData>> logDataList = new ArrayList<ArrayList<LogData>>();
+  //private static ArrayList<ArrayList<LogData>> logDataList = new ArrayList<ArrayList<LogData>>();
   private static ArrayList<Score> scoreList = new ArrayList<Score>();
   private static ArrayList<ArrayList<Bytes>> bytesDataList = new ArrayList<ArrayList<Bytes>>();
   private static ArrayList<VideoSize> availableVideoSize = null;
-  private static ArrayList<ArrayList<Long>> requestLists = new ArrayList<ArrayList<Long>>();
+  private static ArrayList<ArrayList<SegmentLog>> segmentLogList = new ArrayList<ArrayList<SegmentLog>>();
+  private static ArrayList<ArrayList<ByteLog>> bytesLogList = new ArrayList<ArrayList<ByteLog>>();
 
   private long sessionStartTimeMs;
   private long[] loadStartTimeMs;
@@ -66,13 +70,14 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   private long localDurationRebuffering = 0;
   private long rebufferingStartTimeMs;
   private boolean rebufferingFlag = false;
+  private long startUpDealy = 0;
 
   private ArrayList<Bytes> bytesArrayList = new ArrayList<Bytes>();
-  private ArrayList<Long> requestList = new ArrayList<Long>();
 
   double preDataTime = 0;
   long bytesAccumulates = 0;
 
+  boolean isFirst = true;
 
 
 
@@ -82,12 +87,15 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   }
 
   public static void init(){
-    logDataList = new ArrayList<ArrayList<LogData>>();
+    //logDataList = new ArrayList<ArrayList<LogData>>();
+    segmentLogList = new ArrayList<ArrayList<SegmentLog>>();
+    bytesLogList = new ArrayList<ArrayList<ByteLog>>();
     scoreList = new ArrayList<Score>();
     if(Configure.LOGGING_BYTES_DATA)
       bytesDataList = new ArrayList<ArrayList<Bytes>>();
     availableVideoSize = null;
-    requestLists = new ArrayList<ArrayList<Long>>();
+
+
   }
   public static boolean isInitiatedVideoSize(){
     if(availableVideoSize == null)
@@ -119,17 +127,21 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     checkAdditionalBytesData();
     bytesDataList.add(bytesArrayList);
   }
-  public void updateNewLogDataList(ArrayList<LogData> newLogData){
-    Log.d("LLEEJ1","EventLogger,updateNewLogData() : " + newLogData.size());
-    logDataList.add(newLogData);
-    Log.d("LLEEJ1", "EventLogger,updateNewLogData() : " + logDataList.get(logDataList.size()-1).size());
+//  public void updateNewLogDataList(ArrayList<LogData> newLogData){
+//    Log.d("LLEEJ1","EventLogger,updateNewLogData() : " + newLogData.size());
+//    logDataList.add(newLogData);
+//    Log.d("LLEEJ1", "EventLogger,updateNewLogData() : " + logDataList.get(logDataList.size()-1).size());
+//  }
+  public void updateNewSegmentLogList(ArrayList<SegmentLog> newLogData){
+    segmentLogList.add(newLogData);
+  }
+  public void updateNewByteLogList(ArrayList<ByteLog> newByteLogData){
+    bytesLogList.add(newByteLogData);
   }
 
-  public void updateNewRequestList(){
-    requestLists.add(requestList);
-  }
   public void startSession() {
     sessionStartTimeMs = SystemClock.elapsedRealtime();
+    NewLogger.sessionStartTimeMs = sessionStartTimeMs;
     Log.d(TAG, "start [0]");
   }
 
@@ -280,8 +292,8 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   //LLEEJ: InterGET
   @Override
   public void onGetRequestPatched(long elapsedMs){
-    long realTimeMs = elapsedMs - sessionStartTimeMs;
-    requestList.add(realTimeMs);
+    //long realTimeMs = elapsedMs - sessionStartTimeMs;
+    //requestList.add(realTimeMs);
   }
 
   private void printInternalError(String type, Exception e) {
@@ -292,7 +304,8 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     switch (state) {
       case ExoPlayer.STATE_BUFFERING:
         Log.d("LLEEJ_STATE","B");
-        rebufferingCount++;
+        if(!isFirst)
+          rebufferingCount++;
         rebufferingStartTimeMs = SystemClock.elapsedRealtime();
         rebufferingFlag = true;
         return "B";
@@ -307,7 +320,12 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
         return "P";
       case ExoPlayer.STATE_READY:
         Log.d("LLEEJ_STATE","R");
-        if(rebufferingFlag) {
+        if(isFirst){
+          startUpDealy = SystemClock.elapsedRealtime() - rebufferingStartTimeMs;
+          rebufferingFlag = false;
+          isFirst = false;
+        }
+        else if(rebufferingFlag) {
           rebufferingFlag = false;
           localDurationRebuffering = SystemClock.elapsedRealtime() - rebufferingStartTimeMs;
           durationRebuffering += localDurationRebuffering;
@@ -337,6 +355,7 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
   }
 
 
+
   @Override
   public void onBytesTransferred(int elapsedMs, long bytes) {
     if(Configure.LOGGING_BYTES_DATA) {
@@ -363,19 +382,26 @@ public class EventLogger implements DemoPlayer.Listener, DemoPlayer.InfoListener
     checkAdditionalBytesData();
     return bytesArrayList;
   }
-  public double getDurationRebuffering(){
+  public long getDurationRebuffering(){
     return durationRebuffering;
   }
-  public static ArrayList<ArrayList<LogData>> getLogDataList(){
-    return logDataList;
+  public long getStartUpDealy(){
+    return startUpDealy;
   }
+
+//  public static ArrayList<ArrayList<LogData>> getLogDataList(){
+//    return logDataList;
+//  }
   public static ArrayList<ArrayList<Bytes>> getBytesDataList(){
     return bytesDataList;
   }
   public static ArrayList<Score> getScoreList() {
     return scoreList;
   }
-  public static ArrayList<ArrayList<Long>> getRequestLists(){
-    return requestLists;
+  public static ArrayList<ArrayList<SegmentLog>> getSegmentLogList(){
+    return segmentLogList;
+  }
+  public static ArrayList<ArrayList<ByteLog>> getBytesLogList(){
+    return bytesLogList;
   }
 }

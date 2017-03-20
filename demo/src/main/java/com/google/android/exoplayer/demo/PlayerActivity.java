@@ -21,6 +21,8 @@ import com.google.android.exoplayer.ExoPlayer;
 import com.google.android.exoplayer.MediaCodecTrackRenderer.DecoderInitializationException;
 import com.google.android.exoplayer.MediaCodecUtil.DecoderQueryException;
 import com.google.android.exoplayer.MediaFormat;
+import com.google.android.exoplayer.NewLogger;
+import com.google.android.exoplayer.SegmentLog;
 import com.google.android.exoplayer.audio.AudioCapabilities;
 import com.google.android.exoplayer.audio.AudioCapabilitiesReceiver;
 import com.google.android.exoplayer.demo.Log.BandwidthLogData;
@@ -153,7 +155,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
 
   private AudioCapabilitiesReceiver audioCapabilitiesReceiver;
 
-  private ArrayList<LogData> logList = null;
+  //private ArrayList<LogData> logList = null;
   private int id;
   private String tag;
   private SessionTimer sessionTimer;
@@ -347,6 +349,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
       case SampleChooserActivity.MODE_BBA_RB_2S:
       case SampleChooserActivity.MODE_DASH_RB_4S:
       case SampleChooserActivity.MODE_BBA_RB_4S:
+        case SampleChooserActivity.MODE_DASH_RB_6S:
+        case SampleChooserActivity.MODE_BBA_RB_6S:
       case SampleChooserActivity.MODE_DASH_RB_10S:
       case SampleChooserActivity.MODE_BBA_RB_10S:
       case SampleChooserActivity.MODE_DASH_RB_15S:
@@ -419,6 +423,18 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     }
   }
 
+  private int bitrateToIdx(double bitrate){
+    ArrayList<VideoSize> availableVideoSize = EventLogger.getAvailableVideoSize();
+
+    for(int i = 0; i < availableVideoSize.size(); i++){
+      VideoSize videoSize = availableVideoSize.get(i);
+      if(videoSize.getBps()/1000.0 == bitrate)
+        return i;
+    }
+    return -1;
+  }
+
+
   // DemoPlayer.Listener implementation
   private int heightToIdx(String str){
     ArrayList<VideoSize> availableVideoSize = EventLogger.getAvailableVideoSize();
@@ -432,51 +448,78 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     return -1;
   }
   private void doFinalLogging(){
-    Log.d("LLEEJ1", "PlayerActivity,doFinalLogging() : " + logList.size());
-    eventLogger.updateNewLogDataList(logList);
-
+    //Log.d("LLEEJ1", "PlayerActivity,doFinalLogging() : " + logList.size());
+    //eventLogger.updateNewLogDataList(logList);
+    eventLogger.updateNewSegmentLogList(NewLogger.getSegmentLogList());
+    eventLogger.updateNewByteLogList(NewLogger.getByteLogList());
+    ArrayList<SegmentLog> segmentLogList = NewLogger.getSegmentLogList();
+    NewLogger.init();
 
     if(Configure.LOGGING_BYTES_DATA)
       eventLogger.updateNewBytesDataList();
 
-    eventLogger.updateNewRequestList();
 
     Score newScore = new Score();
+
     newScore.numRebuffering = eventLogger.getRebufferingCount();
     newScore.durationRebuffering = eventLogger.getDurationRebuffering();
+    newScore.startupDelay = eventLogger.getStartUpDealy();
 
+    //average
 
-    LogData pre = null;
-    for(LogData data : logList){
-      newScore.numSwitching++;
-      if(pre != null){
-        newScore.magSwitching += Math.abs(heightToIdx(data.getLog()) - heightToIdx(pre.getLog()));
-        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
-        newScore.avgBitrate += diff * SampleChooserActivity.convert(pre.getLog());
+    SegmentLog preLog = null;
+
+    for(SegmentLog log : segmentLogList){
+      newScore.avgBitrate += log.bitrate;
+      if(preLog != null && preLog.bitrate != log.bitrate){
+        newScore.numSwitching++;
+        Log.d("LLEEJ, magSwitching", "bitrate : " + log.bitrate + " , idx : " + bitrateToIdx(log.bitrate));
+        Log.d("LLEEJ, magSwitching", "bitrate : " + preLog.bitrate + " , idx : " + bitrateToIdx(preLog.bitrate));
+        newScore.magSwitching += Math.abs(bitrateToIdx(log.bitrate) - bitrateToIdx(preLog.bitrate));
       }
-      pre = data;
+      preLog = log;
     }
-    double diff2 = SampleChooserActivity.VIDEO_DURATION - pre.getTimeToDouble();
-    newScore.avgBitrate += diff2 * SampleChooserActivity.convert(pre.getLog());
-    newScore.avgBitrate += logList.get(0).getTimeToDouble() * SampleChooserActivity.convert(logList.get(0).getLog());
+    newScore.avgBitrate /= segmentLogList.size();
 
-    newScore.avgBitrate = newScore.avgBitrate / (double) SampleChooserActivity.VIDEO_DURATION;
-
-    pre = null;
-    for(LogData data : logList){
-      if(pre != null){
-        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
-        newScore.varBitrate += diff * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
-      }
-      pre = data;
+    for(SegmentLog log : segmentLogList){
+      newScore.varBitrate += (log.bitrate - newScore.avgBitrate) * (log.bitrate - newScore.avgBitrate);
     }
+    newScore.varBitrate /= (segmentLogList.size()-1);
 
-    newScore.varBitrate += diff2 * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
-    newScore.varBitrate += (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate);
-    newScore.varBitrate = newScore.varBitrate /(double) SampleChooserActivity.VIDEO_DURATION;
-    newScore.varBitrate = Math.sqrt(newScore.varBitrate);
+
+
+//    LogData pre = null;
+//    for(LogData data : logList){
+//      newScore.numSwitching++;
+//      if(pre != null){
+//        newScore.magSwitching += Math.abs(heightToIdx(data.getLog()) - heightToIdx(pre.getLog()));
+//        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
+//        newScore.avgBitrate += diff * SampleChooserActivity.convert(pre.getLog());
+//      }
+//      pre = data;
+//    }
+//    double diff2 = SampleChooserActivity.VIDEO_DURATION - pre.getTimeToDouble();
+//    newScore.avgBitrate += diff2 * SampleChooserActivity.convert(pre.getLog());
+//    newScore.avgBitrate += logList.get(0).getTimeToDouble() * SampleChooserActivity.convert(logList.get(0).getLog());
+//
+//    newScore.avgBitrate = newScore.avgBitrate / (double) SampleChooserActivity.VIDEO_DURATION;
+//
+//    pre = null;
+//    for(LogData data : logList){
+//      if(pre != null){
+//        double diff = data.getTimeToDouble() - pre.getTimeToDouble();
+//        newScore.varBitrate += diff * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
+//      }
+//      pre = data;
+//    }
+//
+//    newScore.varBitrate += diff2 * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(pre.getLog()) - newScore.avgBitrate);
+//    newScore.varBitrate += (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate) * (SampleChooserActivity.convert(logList.get(0).getLog()) - newScore.avgBitrate);
+//    newScore.varBitrate = newScore.varBitrate /(double) SampleChooserActivity.VIDEO_DURATION;
+//    newScore.varBitrate = Math.sqrt(newScore.varBitrate);
 
     eventLogger.updateNewScore(newScore);
+
   }
   /*
   private void writeFileToDevice(){
@@ -583,7 +626,7 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     setResult(0, intent);
     //writeFileToDevice();
     doFinalLogging();
-    logList = null;
+    //logList = null;
     Log.d("LLEEJ","END STATE");
     finish();
   }
@@ -670,11 +713,11 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback, 
     videoFrame.setAspectRatio(
             height == 0 ? 1 : (width * pixelWidthAspectRatio) / height);
 
-    if(logList == null)
-      logList = new ArrayList<LogData>();
+    //if(logList == null)
+      //logList = new ArrayList<LogData>();
 
 
-    logList.add(new LogData(getTimeString(player.getCurrentPosition()), height+""));
+    //logList.add(new LogData(getTimeString(player.getCurrentPosition()), height+""));
   }
 
   // User controls

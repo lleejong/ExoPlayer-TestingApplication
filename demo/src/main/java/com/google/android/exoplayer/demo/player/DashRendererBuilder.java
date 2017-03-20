@@ -255,12 +255,13 @@ public class DashRendererBuilder implements RendererBuilder {
         case SampleChooserActivity.MODE_DASH:
         case SampleChooserActivity.MODE_DASH_RB_2S:
         case SampleChooserActivity.MODE_DASH_RB_4S:
+          case SampleChooserActivity.MODE_DASH_RB_6S:
         case SampleChooserActivity.MODE_DASH_RB_10S:
         case SampleChooserActivity.MODE_DASH_RB_15S:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
                   videoDataSource, new LLEEJFormatEvaluator.AdaptiveEvaluator(bandwidthMeter), LIVE_EDGE_LATENCY_MS,
-                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO,true);
           Log.d("LLEEJ", "DASHRenderer selected Mode DASH");
           break;
 //        case SampleChooserActivity.MODE_DASH_FIXED:
@@ -279,12 +280,13 @@ public class DashRendererBuilder implements RendererBuilder {
         case SampleChooserActivity.MODE_BBA:
         case SampleChooserActivity.MODE_BBA_RB_2S:
         case SampleChooserActivity.MODE_BBA_RB_4S:
+          case SampleChooserActivity.MODE_BBA_RB_6S:
         case SampleChooserActivity.MODE_BBA_RB_10S:
         case SampleChooserActivity.MODE_BBA_RB_15S:
           videoChunkSource = new DashChunkSource(manifestFetcher,
                   DefaultDashTrackSelector.newVideoInstance(context, true, filterHdContent),
                   videoDataSource, new LLEEJFormatEvaluator.BufferBasedAdaptiveEvaluator(bandwidthMeter,SampleChooserActivity.VIDEO_DURATION, mainHandler, player), LIVE_EDGE_LATENCY_MS,
-                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO);
+                  elapsedRealtimeOffset, mainHandler, player, DemoPlayer.TYPE_VIDEO,true);
           break;
       }
 

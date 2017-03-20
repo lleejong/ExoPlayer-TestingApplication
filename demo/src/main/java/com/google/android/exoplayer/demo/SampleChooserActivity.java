@@ -15,6 +15,8 @@
  */
 package com.google.android.exoplayer.demo;
 
+import com.google.android.exoplayer.ByteLog;
+import com.google.android.exoplayer.SegmentLog;
 import com.google.android.exoplayer.demo.Log.Bytes;
 import com.google.android.exoplayer.demo.Log.LogData;
 import com.google.android.exoplayer.demo.Log.Score;
@@ -58,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -69,17 +72,21 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   public static final int MODE_DASH = 0;
   public static final int MODE_DASH_RB_2S = 1;
   public static final int MODE_DASH_RB_4S = 2;
-  public static final int MODE_DASH_RB_10S = 3;
-  public static final int MODE_DASH_RB_15S = 4;
-  public static final int MODE_BBA = 5;
-  public static final int MODE_BBA_RB_2S= 6;
-  public static final int MODE_BBA_RB_4S = 7;
-  public static final int MODE_BBA_RB_10S = 8;
-  public static final int MODE_BBA_RB_15S = 9;
-  public static final int MODE_HLS = 10;
-  public static final int MODE_SS = 11;
+  public static final int MODE_DASH_RB_6S = 3;
+  public static final int MODE_DASH_RB_10S = 4;
+  public static final int MODE_DASH_RB_15S = 5;
+  public static final int MODE_BBA = 6;
+  public static final int MODE_BBA_RB_2S= 7;
+  public static final int MODE_BBA_RB_4S = 8;
+  public static final int MODE_BBA_RB_6S = 9;
+  public static final int MODE_BBA_RB_10S = 10;
+  public static final int MODE_BBA_RB_15S = 11;
+  public static final int MODE_HLS = 12;
+  public static final int MODE_SS = 13;
+  public static final int MODE_DASH_ROUTINE = 14;
+  public static final int MODE_BBA_ROUTINE = 15;
 
-  public static int VIDEO_DURATION = 120;
+  public static int VIDEO_DURATION = 300;
 
   private TextView statusView;
   private Button startButton;
@@ -91,6 +98,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
   private int remainedCount = 0;
 
   private int selectedMode;
+  private int routineIndex = -1;
   private String tagText;
   private Spinner s;
 
@@ -117,7 +125,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
     tagEdit = (EditText) findViewById(R.id.tagEdit);
 
-    final String[] items = {"DASH", "DASH_RB_2S", "DASH_RB_4S", "DASH_RB_10S", "DASH_RB_15S", "BBA", "BBA_RB_2S","BBA_RB_4S", "BBA_RB_10S", "BBA_RB_15S", "HLS", "SS"};
+    final String[] items = {"DASH", "DASH_RB_2S", "DASH_RB_4S","DASH_RB_6S","DASH_RB_10S", "DASH_RB_15S", "BBA", "BBA_RB_2S","BBA_RB_4S", "BBA_RB_6S","BBA_RB_10S", "BBA_RB_15S", "HLS", "SS", "DASH_ROUTINE", "BBA_ROUTINE"};
 
     ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.spinner,items);
     s = (Spinner)findViewById(R.id.spinner);
@@ -283,8 +291,10 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     //File newFolder = new File(folderName);
     //File newFolder = new File(folderPath);
     File newFile = null;
+    File segmentInfoFile = null;
     File newBytesDataFile = null;
     File newRequestDataFile = null;
+    File newByteLogFile = null;
 
     try {
 
@@ -293,84 +303,79 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       newFile.createNewFile();
       PrintWriter printWriter = new PrintWriter(newFile);
 
-      ArrayList<ArrayList<LogData>> totalList = EventLogger.getLogDataList();
+      //ArrayList<ArrayList<LogData>> totalList = EventLogger.getLogDataList();
 
-      String[][] forWrite = new String[1000][totalList.size() + 1];
-      HashMap<Double, Double> map = new HashMap<Double, Double>();
+      ArrayList<ArrayList<SegmentLog>> totalList = EventLogger.getSegmentLogList();
+      ArrayList<ArrayList<SegmentLog>> tempList = new ArrayList<ArrayList<SegmentLog>>();
 
-      for(ArrayList<LogData> subList: totalList){
-        for(LogData logData: subList){
-          if(!map.containsKey(logData.getTimeToDouble()))
-            map.put(logData.getTimeToDouble(),logData.getTimeToDouble());
-        }
-      }
-
-
-
-      ArrayList<Double> tempList = new ArrayList<Double>(map.values());
-      Collections.sort(tempList);
-
-      ArrayList<Double> timestampList = new ArrayList<Double>();
-      timestampList.add(0.0);
-      for(int x = 1; x < tempList.size(); x++){
-        timestampList.add(tempList.get(x));
-        timestampList.add(tempList.get(x));
-      }
-
-      timestampList.add((double)VIDEO_DURATION);
-      Collections.sort(timestampList);
-
-      for(int y = 0; y < timestampList.size(); y++){
-        forWrite[y+1][0] = timestampList.get(y) + "";
-      }
-
-      String name = "Exp";
-      for(int x = 0; x < totalList.size(); x++){
-        forWrite[0][x+1] = name+ (x+1);
-      }
-
-      for(int x = 0; x < totalList.size(); x++){
-        ArrayList<LogData> subList = totalList.get(x);
-        for(int y = 0; y < subList.size(); y++){
-          LogData data = subList.get(y);
-          int idx = timestampList.lastIndexOf(data.getTimeToDouble());
-          forWrite[idx+1][x+1] = convert(Integer.parseInt(data.getLog()));
-        }
-      }
-
-      for(int x = 0; x < totalList.size(); x++){
-        ArrayList<LogData> subList = totalList.get(x);
-        for(int y = 1; y < subList.size(); y++){
-          LogData predata = subList.get(y-1);
-          LogData data = subList.get(y);
-
-          int lastIdx = timestampList.lastIndexOf(predata.getTimeToDouble());
-          int idx = timestampList.lastIndexOf(data.getTimeToDouble());
-
-          for(int z = lastIdx + 2; z < idx + 1; z++){
-            forWrite[z][x+1] = convert(Integer.parseInt(predata.getLog()));
+      for(ArrayList<SegmentLog> segmentLogList : totalList){
+        SegmentLog pre = null;
+        ArrayList<SegmentLog> list = new ArrayList<SegmentLog>();
+        for(SegmentLog log : segmentLogList){
+          if(pre != null){
+            if(pre.bitrate != log.bitrate){
+              list.add(pre);
+              list.add(new SegmentLog(-1, pre.bitrate,log.requestedTime));
+              list.add(log);
+            }
           }
+          pre = log;
         }
-
-        LogData data = subList.get(subList.size() - 1);
-        int idx = timestampList.lastIndexOf(data.getTimeToDouble());
-        for(int z = idx + 2; z < timestampList.size() + 1; z++){
-          forWrite[z][x+1] = convert(Integer.parseInt(data.getLog()));
-        }
+        tempList.add(list);
       }
-
-
-      for(int x = 0; x < timestampList.size() + 1; x++){
-        String line= "";
-        for(int y = 0; y < totalList.size() + 1; y++){
-          if(forWrite[x][y] == null){
-            line += ",";
-          } else{
-            line += forWrite[x][y] + ",";
+      int cursor = 0;
+      HashSet<Integer> completedSet = new HashSet<Integer>();
+      while(true){
+        String line = "";
+        if(completedSet.size() == tempList.size())
+          break;
+        for(int i = 0; i < tempList.size(); i ++){
+          if(completedSet.contains(i)){
+            line += ",,";
+            continue;
           }
+          if(tempList.get(i).size() == cursor){
+            completedSet.add(i);
+            line += ",,";
+            continue;
+          }
+          SegmentLog log = tempList.get(i).get(cursor);
+          line += log.requestedTime + "," + log.bitrate + ",";
         }
         line = line.substring(0, line.length() - 1);
         printWriter.println(line);
+        cursor++;
+      }
+      printWriter.close();
+
+      segmentInfoFile = new File(baseDir.getPath()+"/"+fileName+"_Summary.csv");
+      segmentInfoFile.createNewFile();
+
+      printWriter = new PrintWriter(segmentInfoFile);
+      ArrayList<ArrayList<SegmentLog>> segmentLogList = EventLogger.getSegmentLogList();
+
+      int cursor1 = 0;
+      HashSet<Integer> completedSet1 = new HashSet<Integer>();
+      while(true){
+        String line = "";
+        if(completedSet1.size() == segmentLogList.size())
+          break;
+        for(int i = 0; i < segmentLogList.size(); i ++){
+          if(completedSet1.contains(i)){
+            line += ",,,";
+            continue;
+          }
+          if(segmentLogList.get(i).size() == cursor1){
+            completedSet1.add(i);
+            line += ",,,";
+            continue;
+          }
+          SegmentLog log = segmentLogList.get(i).get(cursor1);
+          line += log.requestedTime + "," + log.bitrate + "," + ",";
+       }
+        line = line.substring(0, line.length() - 1);
+        printWriter.println(line);
+        cursor1++;
       }
 
       printWriter.println();
@@ -380,6 +385,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       String varLine = "Var.Bitrate,";
       String numSwitchingLine = "Num.Switching,";
       String magSwitchingLine = "Mag.Switching,";
+      String startupDelayLine = "StartUp Delay,";
       String numRebufferingLine = "Num.Rebuffering,";
       String durRebufferingLine = "Dur.Rebuffering,";
 
@@ -390,6 +396,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
         varLine += scores.get(i).varBitrate + ",";
         numSwitchingLine += scores.get(i).numSwitching + ",";
         magSwitchingLine += scores.get(i).magSwitching + ",";
+        startupDelayLine += scores.get(i).startupDelay + ",";
         numRebufferingLine += scores.get(i).numRebuffering + ",";
         durRebufferingLine += scores.get(i).durationRebuffering + ",";
       }
@@ -397,6 +404,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       varLine = varLine.substring(0, varLine.length() - 1);
       numSwitchingLine = numSwitchingLine.substring(0, numSwitchingLine.length() - 1);
       magSwitchingLine = magSwitchingLine.substring(0, magSwitchingLine.length() - 1);
+      startupDelayLine = startupDelayLine.substring(0, startupDelayLine.length() - 1);
       numRebufferingLine = numRebufferingLine.substring(0, numRebufferingLine.length() - 1);
       durRebufferingLine = durRebufferingLine.substring(0, durRebufferingLine.length() - 1);
 
@@ -404,82 +412,87 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       printWriter.println(varLine);
       printWriter.println(numSwitchingLine);
       printWriter.println(magSwitchingLine);
+      printWriter.println(startupDelayLine);
       printWriter.println(numRebufferingLine);
       printWriter.println(durRebufferingLine);
 
       printWriter.close();
 
-      //Bytes Data
+      newByteLogFile = new File(baseDir.getPath()+"/"+fileName+"_Byte.csv");
+      newByteLogFile.createNewFile();
 
-      if(Configure.LOGGING_BYTES_DATA) {
-        newBytesDataFile = new File(baseDir.getPath() + "/" + fileName + "_bytesData.csv");
-        newBytesDataFile.createNewFile();
-        PrintWriter bytesDataPrintWriter = new PrintWriter(newBytesDataFile);
+      printWriter = new PrintWriter(newByteLogFile);
+      ArrayList<ArrayList<ByteLog>> newByteLogList = EventLogger.getBytesLogList();
 
-        //ArrayList<String> wholeBytesDataList = readBytesDataToDevice();
-
-        //ArrayList<ArrayList<Bytes>> totalBytesDataList = new ArrayList<ArrayList<Bytes>>();
-        ArrayList<ArrayList<Bytes>> totalBytesDataList = EventLogger.getBytesDataList();
-
-        String bytesDataFileHeader = "";
-        for (int i = 0; i < totalBytesDataList.size(); i++) {
-          bytesDataFileHeader += "Time(s),Bytes,";
-        }
-        bytesDataFileHeader = bytesDataFileHeader.substring(0, bytesDataFileHeader.length() - 1);
-        bytesDataPrintWriter.println(bytesDataFileHeader);
-
-        int cursor = 0;
-        int completed = 0;
-        while (completed != totalBytesDataList.size()) {
-          String line = "";
-          completed = 0;
-          for (int i = 0; i < totalBytesDataList.size(); i++) {
-            if (totalBytesDataList.get(i).size() <= cursor) {
-              line += ",,";
-              completed++;
-            } else {
-              Bytes bytes = totalBytesDataList.get(i).get(cursor);
-              line += bytes.getTimestamp() + "," + bytes.getBytes() + ",";
-            }
-          }
-          line = line.substring(0, line.length() - 1);
-          bytesDataPrintWriter.println(line);
-          cursor++;
-        }
-
-        bytesDataPrintWriter.close();
-      }
-
-      newRequestDataFile = new File(baseDir.getPath() + "/" + fileName + "_requestData.csv");
-      newRequestDataFile.createNewFile();
-      PrintWriter requestDataPrintWriter = new PrintWriter(newRequestDataFile);
-
-      ArrayList<ArrayList<Long>> totalRequestDataList = EventLogger.getRequestLists();
-
-      int cursor = 0;
-      int completed = 0;
-      HashMap<Integer,Integer> completedMap = new HashMap<Integer,Integer>();
-      while (completed != totalRequestDataList.size()) {
+      int cursor2 = 0;
+      HashSet<Integer> completedSet2 = new HashSet<Integer>();
+      while(true){
         String line = "";
-        for (int i = 0; i < totalRequestDataList.size(); i++) {
-          if (totalRequestDataList.get(i).size() <= cursor) {
-            line += ",";
-            if(!completedMap.containsKey(i)) {
-              completed++;
-              completedMap.put(i, i);
-            }
-          } else {
-            long stamp = totalRequestDataList.get(i).get(cursor);
-            line += stamp + ",";
+        if(completedSet2.size() == newByteLogList.size())
+          break;
+        for(int i = 0; i < newByteLogList.size(); i ++){
+          if(completedSet2.contains(i)){
+            line += ",,,";
+            continue;
           }
+          if(newByteLogList.get(i).size() == cursor2){
+            completedSet2.add(i);
+            line += ",,,";
+            continue;
+          }
+          ByteLog log = newByteLogList.get(i).get(cursor2);
+          line += log.endTime + "," + log.bytes + "," + ",";
         }
         line = line.substring(0, line.length() - 1);
-        requestDataPrintWriter.println(line);
-        cursor++;
+        printWriter.println(line);
+        cursor2++;
       }
-
-      requestDataPrintWriter.close();
       printWriter.close();
+
+      //Bytes Data
+
+//      if(Configure.LOGGING_BYTES_DATA) {
+//        newBytesDataFile = new File(baseDir.getPath() + "/" + fileName + "_bytesData.csv");
+//        newBytesDataFile.createNewFile();
+//        PrintWriter bytesDataPrintWriter = new PrintWriter(newBytesDataFile);
+//
+//        //ArrayList<String> wholeBytesDataList = readBytesDataToDevice();
+//
+//        //ArrayList<ArrayList<Bytes>> totalBytesDataList = new ArrayList<ArrayList<Bytes>>();
+//        ArrayList<ArrayList<Bytes>> totalBytesDataList = EventLogger.getBytesDataList();
+//
+//        String bytesDataFileHeader = "";
+//        for (int i = 0; i < totalBytesDataList.size(); i++) {
+//          bytesDataFileHeader += "Time(s),Bytes,";
+//        }
+//        bytesDataFileHeader = bytesDataFileHeader.substring(0, bytesDataFileHeader.length() - 1);
+//        bytesDataPrintWriter.println(bytesDataFileHeader);
+//
+//        int cursor = 0;
+//        int completed = 0;
+//        while (true) {
+//          String line = "";
+//          completed = 0;
+//          for (int i = 0; i < totalBytesDataList.size(); i++) {
+//            if (totalBytesDataList.get(i).size() <= cursor) {
+//              line += ",,";
+//              completed++;
+//            } else {
+//              Bytes bytes = totalBytesDataList.get(i).get(cursor);
+//              line += bytes.getTimestamp() + "," + bytes.getBytes() + ",";
+//            }
+//          }
+//          if(completed == totalBytesDataList.size())
+//            break;
+//          line = line.substring(0, line.length() - 1);
+//          bytesDataPrintWriter.println(line);
+//          cursor++;
+//        }
+//
+//        bytesDataPrintWriter.close();
+//      }
+
+
 
       updateStatusView("End write files...");
 
@@ -494,7 +507,7 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
 
     if(Configure.LOGGING_SERVER) {
       try {
-        Socket socket = new Socket("192.9.81.40", 9999);
+        Socket socket = new Socket("192.9.81.145", 9999);
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
         dos.writeUTF(fileName + ".csv");
         Log.d("LLEEJ", " Try to send" + fileName + ".csv");
@@ -519,43 +532,43 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       } catch (IOException e) {
         e.printStackTrace();
       }
-      if (Configure.LOGGING_BYTES_DATA) {
-        try {
-          Socket socket = new Socket("192.9.81.40", 9999);
-          DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-          dos.writeUTF(fileName + "_bytesData.csv");
-          Log.d("LLEEJ", " Try to send" + fileName + "_bytesData.csv");
-          dos.writeUTF(newBytesDataFile.length() + "");
-          Log.d("LLEEJ", "FileSize : " + newBytesDataFile.length());
-
-          InputStream fis = new FileInputStream(newBytesDataFile);
-          BufferedInputStream bis = new BufferedInputStream(fis);
-
-          Log.d("LLEEJ", "Sending...");
-
-          byte[] buff = new byte[4096];
-          int len = 0;
-          while ((len = bis.read(buff)) > 0) {
-            dos.write(buff, 0, len);
-          }
-
-          dos.flush();
-          dos.close();
-          bis.close();
-          fis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
+//      if (Configure.LOGGING_BYTES_DATA) {
+//        try {
+//          Socket socket = new Socket("192.9.81.145", 9999);
+//          DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//          dos.writeUTF(fileName + "_bytesData.csv");
+//          Log.d("LLEEJ", " Try to send" + fileName + "_bytesData.csv");
+//          dos.writeUTF(newBytesDataFile.length() + "");
+//          Log.d("LLEEJ", "FileSize : " + newBytesDataFile.length());
+//
+//          InputStream fis = new FileInputStream(newBytesDataFile);
+//          BufferedInputStream bis = new BufferedInputStream(fis);
+//
+//          Log.d("LLEEJ", "Sending...");
+//
+//          byte[] buff = new byte[4096];
+//          int len = 0;
+//          while ((len = bis.read(buff)) > 0) {
+//            dos.write(buff, 0, len);
+//          }
+//
+//          dos.flush();
+//          dos.close();
+//          bis.close();
+//          fis.close();
+//        } catch (IOException e) {
+//          e.printStackTrace();
+//        }
+//      }
       try {
-        Socket socket = new Socket("192.9.81.40", 9999);
+        Socket socket = new Socket("192.9.81.145", 9999);
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-        dos.writeUTF(fileName + "_requestData.csv");
-        Log.d("LLEEJ", " Try to send" + fileName + "_requestData.csv");
-        dos.writeUTF(newRequestDataFile.length() + "");
-        Log.d("LLEEJ", "FileSize : " + newRequestDataFile.length());
+        dos.writeUTF(fileName + "_Summary.csv");
+        Log.d("LLEEJ", " Try to send" + fileName + "_Summary.csv");
+        dos.writeUTF(segmentInfoFile.length() + "");
+        Log.d("LLEEJ", "FileSize : " + segmentInfoFile.length());
 
-        InputStream fis = new FileInputStream(newRequestDataFile);
+        InputStream fis = new FileInputStream(segmentInfoFile);
         BufferedInputStream bis = new BufferedInputStream(fis);
 
         Log.d("LLEEJ", "Sending...");
@@ -573,6 +586,32 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
       } catch (IOException e) {
         e.printStackTrace();
       }
+//      try {
+//        Socket socket = new Socket("192.9.81.145", 9999);
+//        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//        dos.writeUTF(fileName + "_Byte.csv");
+//        Log.d("LLEEJ", " Try to send" + fileName + "_Byte.csv");
+//        dos.writeUTF(newByteLogFile.length() + "");
+//        Log.d("LLEEJ", "FileSize : " + newByteLogFile.length());
+//
+//        InputStream fis = new FileInputStream(newByteLogFile);
+//        BufferedInputStream bis = new BufferedInputStream(fis);
+//
+//        Log.d("LLEEJ", "Sending...");
+//
+//        byte[] buff = new byte[4096];
+//        int len = 0;
+//        while ((len = bis.read(buff)) > 0) {
+//          dos.write(buff, 0, len);
+//        }
+//
+//        dos.flush();
+//        dos.close();
+//        bis.close();
+//        fis.close();
+//      } catch (IOException e) {
+//        e.printStackTrace();
+//      }
     }
 
 
@@ -590,8 +629,23 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     //wholeLogList.add(logList);
     if(remainedCount == 0) {
       writeLogToDevice();
+      if(routineIndex != -1){
+        if(routineIndex != MODE_DASH_RB_15S && routineIndex != MODE_BBA_RB_15S){
+          routineIndex++;
+          selectedMode = routineIndex;
+          remainedCount = confirmedCount;
+          executeTest();
+        }
+        else{
+          confirmedCount = 0;
+          tagText = "";
+        }
+      }
+      else {
         confirmedCount = 0;
         tagText = "";
+      }
+
     }
     else
       executeTest();
@@ -628,40 +682,68 @@ public class SampleChooserActivity extends Activity implements View.OnClickListe
     Log.d("LLEEJ", "remainedCount : " + remainedCount);
     Log.d("LLEEJ", confirmedCount- remainedCount +" TEST start");
 
+    Sample sample = null;
 
+    Log.d("LLEEJ","selected Mode " + selectedMode );
 
-    Sample sample;
-    switch(selectedMode){
-      case SampleChooserActivity.MODE_DASH:
-      case SampleChooserActivity.MODE_BBA:
-        sample = Samples.YOUTUBE_DASH_MP4[4];
-        break;
-      case SampleChooserActivity.MODE_DASH_RB_2S:
-      case SampleChooserActivity.MODE_BBA_RB_2S:
-        sample = Samples.YOUTUBE_DASH_MP4[0];
-        break;
-      case SampleChooserActivity.MODE_DASH_RB_4S:
-      case SampleChooserActivity.MODE_BBA_RB_4S:
-        sample = Samples.YOUTUBE_DASH_MP4[1];
-        break;
-      case SampleChooserActivity.MODE_DASH_RB_10S:
-      case SampleChooserActivity.MODE_BBA_RB_10S:
-        sample = Samples.YOUTUBE_DASH_MP4[2];
-        break;
-      case SampleChooserActivity.MODE_DASH_RB_15S:
-      case SampleChooserActivity.MODE_BBA_RB_15S:
-        sample = Samples.YOUTUBE_DASH_MP4[3];
-        break;
-      case SampleChooserActivity.MODE_HLS:
-        sample = Samples.HLS[5];
-        break;
-      case SampleChooserActivity.MODE_SS:
-        sample = Samples.SMOOTHSTREAMING[0];
-        break;
-      default:
-        sample = null;
-        break;
+    if(selectedMode == SampleChooserActivity.MODE_DASH_ROUTINE || selectedMode == SampleChooserActivity.MODE_BBA_ROUTINE){
+      switch(selectedMode){
+        case SampleChooserActivity.MODE_DASH_ROUTINE:
+          routineIndex = MODE_DASH_RB_2S;
+          selectedMode = MODE_DASH_RB_2S;
+          break;
+        case SampleChooserActivity.MODE_BBA_ROUTINE:
+          routineIndex = MODE_BBA_RB_2S;
+          selectedMode = MODE_BBA_RB_2S;
+          break;
+      }
     }
+
+    Log.d("LLEEJ","selected Mode " + selectedMode );
+
+      switch (selectedMode) {
+        case SampleChooserActivity.MODE_DASH:
+        case SampleChooserActivity.MODE_BBA:
+
+          sample = Samples.YOUTUBE_DASH_MP4[5];
+          break;
+        case SampleChooserActivity.MODE_DASH_RB_2S:
+        case SampleChooserActivity.MODE_BBA_RB_2S:
+          sample = Samples.YOUTUBE_DASH_MP4[0];
+          break;
+        case SampleChooserActivity.MODE_DASH_RB_4S:
+        case SampleChooserActivity.MODE_BBA_RB_4S:
+          sample = Samples.YOUTUBE_DASH_MP4[1];
+          break;
+        case SampleChooserActivity.MODE_DASH_RB_6S:
+        case SampleChooserActivity.MODE_BBA_RB_6S:
+          sample = Samples.YOUTUBE_DASH_MP4[2];
+          break;
+        case SampleChooserActivity.MODE_DASH_RB_10S:
+        case SampleChooserActivity.MODE_BBA_RB_10S:
+          sample = Samples.YOUTUBE_DASH_MP4[3];
+          break;
+        case SampleChooserActivity.MODE_DASH_RB_15S:
+        case SampleChooserActivity.MODE_BBA_RB_15S:
+          sample = Samples.YOUTUBE_DASH_MP4[4];
+          break;
+        case SampleChooserActivity.MODE_HLS:
+          sample = Samples.HLS[5];
+          break;
+        case SampleChooserActivity.MODE_SS:
+          sample = Samples.SMOOTHSTREAMING[0];
+          break;
+        default:
+          sample = null;
+          break;
+      }
+    executeTest(sample);
+  }
+  private void executeTest(Sample sample){
+    Log.d("LLEEJ", "confirmendCount : " + confirmedCount);
+    Log.d("LLEEJ", "remainedCount : " + remainedCount);
+    Log.d("LLEEJ", confirmedCount- remainedCount +" TEST start");
+
     Intent mpdIntent = new Intent(this, PlayerActivity.class)
             .setData(Uri.parse(sample.uri))
             .putExtra(PlayerActivity.CONTENT_ID_EXTRA, sample.contentId)

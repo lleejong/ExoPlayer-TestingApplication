@@ -18,9 +18,12 @@ package com.google.android.exoplayer.dash;
 import com.google.android.exoplayer.BehindLiveWindowException;
 import com.google.android.exoplayer.C;
 import com.google.android.exoplayer.MediaFormat;
+import com.google.android.exoplayer.NewLogger;
+import com.google.android.exoplayer.SegmentLog;
 import com.google.android.exoplayer.TimeRange;
 import com.google.android.exoplayer.TimeRange.DynamicTimeRange;
 import com.google.android.exoplayer.TimeRange.StaticTimeRange;
+import com.google.android.exoplayer.chunk.BaseMediaChunk;
 import com.google.android.exoplayer.chunk.Chunk;
 import com.google.android.exoplayer.chunk.ChunkExtractorWrapper;
 import com.google.android.exoplayer.chunk.ChunkOperationHolder;
@@ -56,11 +59,13 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * An {@link ChunkSource} for DASH streams.
@@ -133,6 +138,7 @@ public class DashChunkSource implements ChunkSource, Output {
   private boolean lastChunkWasInitialization;
   private IOException fatalError;
 
+  private boolean isVideo = false;
   /**
    * Lightweight constructor to use for fixed duration content.
    *
@@ -209,6 +215,17 @@ public class DashChunkSource implements ChunkSource, Output {
    * @param eventListener A listener of events. May be null if delivery of events is not required.
    * @param eventSourceId An identifier that gets passed to {@code eventListener} methods.
    */
+
+  public DashChunkSource(ManifestFetcher<MediaPresentationDescription> manifestFetcher,
+                         DashTrackSelector trackSelector, DataSource dataSource,
+                         FormatEvaluator adaptiveFormatEvaluator, long liveEdgeLatencyMs, long elapsedRealtimeOffsetMs,
+                         Handler eventHandler, EventListener eventListener, int eventSourceId, boolean isVideo) {
+    this(manifestFetcher, manifestFetcher.getManifest(), trackSelector,
+            dataSource, adaptiveFormatEvaluator, new SystemClock(), liveEdgeLatencyMs * 1000,
+            elapsedRealtimeOffsetMs * 1000, true, eventHandler, eventListener, eventSourceId);
+    this.isVideo = isVideo;
+  }
+
   public DashChunkSource(ManifestFetcher<MediaPresentationDescription> manifestFetcher,
       DashTrackSelector trackSelector, DataSource dataSource,
       FormatEvaluator adaptiveFormatEvaluator, long liveEdgeLatencyMs, long elapsedRealtimeOffsetMs,
@@ -216,6 +233,7 @@ public class DashChunkSource implements ChunkSource, Output {
     this(manifestFetcher, manifestFetcher.getManifest(), trackSelector,
         dataSource, adaptiveFormatEvaluator, new SystemClock(), liveEdgeLatencyMs * 1000,
         elapsedRealtimeOffsetMs * 1000, true, eventHandler, eventListener, eventSourceId);
+
   }
 
   /**
@@ -375,6 +393,7 @@ public class DashChunkSource implements ChunkSource, Output {
       }
     }
 
+    Log.d("Playback", "AA");
     Format selectedFormat = evaluation.format;
     out.queueSize = evaluation.queueSize;
 
@@ -502,8 +521,27 @@ public class DashChunkSource implements ChunkSource, Output {
     Chunk nextMediaChunk = newMediaChunk(periodHolder, representationHolder, dataSource,
         mediaFormat, enabledTrack, segmentNum, evaluation.trigger);
     lastChunkWasInitialization = false;
+
+
+    if(isVideo){
+      NewLogger.addSegmentLog(new SegmentLog(segmentNum++, nextMediaChunk.format.bitrate, getSessionTimeToString(playbackPositionUs)));
+      Log.d("Playback", segmentNum + " , " + nextMediaChunk.format.bitrate + " ," + getSessionTimeToString(playbackPositionUs));
+    }
+    //AdaptationSet adaptationSet = manifest.getPeriod(periodIndex).adaptationSets.get(adaptationSetIndex);
+
     out.chunk = nextMediaChunk;
     //Log.d("INTERGET DEBUG","BB"+ segmentNum);
+  }
+
+  private static final NumberFormat TIME_FORMAT;
+  static {
+    TIME_FORMAT = NumberFormat.getInstance(Locale.US);
+    TIME_FORMAT.setMinimumFractionDigits(2);
+    TIME_FORMAT.setMaximumFractionDigits(2);
+  }
+
+  private String getSessionTimeToString(long ms){
+   return TIME_FORMAT.format((ms) / 1000f / 1000f);
   }
 
   @Override
@@ -516,6 +554,7 @@ public class DashChunkSource implements ChunkSource, Output {
         // period for this initialization chunk may no longer be on the manifest
         return;
       }
+
 
       RepresentationHolder representationHolder = periodHolder.representationHolders.get(formatId);
       if (initializationChunk.hasFormat()) {

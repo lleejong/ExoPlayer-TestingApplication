@@ -15,6 +15,8 @@
  */
 package com.google.android.exoplayer.upstream;
 
+import com.google.android.exoplayer.ByteLog;
+import com.google.android.exoplayer.NewLogger;
 import com.google.android.exoplayer.util.Assertions;
 import com.google.android.exoplayer.util.Clock;
 import com.google.android.exoplayer.util.SlidingPercentile;
@@ -35,6 +37,7 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
   private final EventListener eventListener;
   private final Clock clock;
   private final SlidingPercentile slidingPercentile;
+  private final SlidingPercentile perPacketSlidingPercentile;
 
   private long bytesAccumulator;
   private long startTimeMs;
@@ -63,6 +66,7 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
     this.eventListener = eventListener;
     this.clock = clock;
     this.slidingPercentile = new SlidingPercentile(maxWeight);
+    this.perPacketSlidingPercentile = new SlidingPercentile(maxWeight);
     bitrateEstimate = NO_ESTIMATE;
   }
 
@@ -81,10 +85,11 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
   }
 
   @Override
-  public synchronized void onBytesTransferred(int bytes) {
+  public void onBytesTransferred(int bytes) {
     byteCount++;
     long nowMs = clock.elapsedRealtime();
     int elapsedMs = (int) (nowMs - startTimeMs);
+    NewLogger.addBytesLog(bytes, nowMs);
     notifyBytesTransferred(elapsedMs,bytes);
     bytesAccumulator += bytes;
   }
@@ -103,7 +108,7 @@ public final class DefaultBandwidthMeter implements BandwidthMeter {
           : (long) bandwidthEstimateFloat;
       notifyBandwidthSample(elapsedMs, bytesAccumulator, bitrateEstimate , bitsPerSecond);
       //notifyBytesTransferred(elapsedMs, bytesAccumulator);
-      //Log.d("LLEEJ BYTE DEBUG", "onTransferEnd : "+"streamCount " + streamCount +" streams , ByteCount = " + byteCount);
+      Log.d("LLEEJ BYTE DEBUG", "onTransferEnd : "+"streamCount " + streamCount +" streams , ByteCount = " + byteCount);
     }
     streamCount--;
     if (streamCount > 0) {

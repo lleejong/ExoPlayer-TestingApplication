@@ -9,7 +9,8 @@ public class Score {
     public double avgBitrate;
     public double varBitrate;
     public int numRebuffering;
-    public double durationRebuffering;
+    public long durationRebuffering;
+    public long startupDelay;
 
     public Score(){
         numSwitching = 0;
@@ -18,5 +19,6 @@ public class Score {
         varBitrate = 0;
         numRebuffering = 0;
         durationRebuffering = 0;
+        startupDelay = 0;
     }
 }
